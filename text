@@ -1,0 +1,175 @@
+Why extraClientlibs Doesn't Work
+extraClientlibs only loads scripts when the dialog opens — but your use case is different:
+
+The configure icon triggers JS before the dialog opens.
+
+You need the script available in author mode anytime the component is present, not only during dialog interaction.
+
+That makes extraClientlibs too late in the lifecycle, so it doesn't work here.
+
+❗ Why data-sly-use.clientlib in HTL Doesn’t Work Either
+Including the clientlib like this in your component HTL:
+
+html
+Copy
+Edit
+<sly data-sly-use.clientlib="/libs/granite/sightly/templates/clientlib.html"
+     data-sly-call="${clientlib.all @ categories='your.component.dialog'}" />
+only works when the component is actually rendered on the page. But here’s the key problem:
+
+In author mode, the component might not be rendered at page load (due to sling:resourceType, experience fragments, AJAX, etc.).
+
+Worse, your configure action is tied to the editable layer, not the HTML output — so your JS never runs, even though the component is there.
+
+✅ The Correct Solution: Use a Global Category — But Smartly Scoped
+Since your JS needs to be available as soon as the component appears in author mode (before dialog opens), and it’s triggered by cq:actionConfig, you do need a global clientlib — but we can:
+
+✅ Keep it in cq.authoring.dialog.all
+BUT:
+
+🔐 Scope your JS to run only when your component is on the page
+Example:
+js
+Copy
+Edit
+$(window).on("load", function () {
+  // Find only your component instances on the page
+  $(".your-component-selector").each(function () {
+    // Attach event handlers or init logic only to your component
+    const $component = $(this);
+
+    $component.find(".configure-icon").on("click", function () {
+      // Your pre-dialog logic here
+      console.log("CardHighlight configure clicked!");
+    });
+  });
+});
+Even better, use Granite.author.Component.editables to bind behavior at the editable layer level (not DOM-level):
+
+Example using AEM’s JS API:
+js
+Copy
+Edit
+$(function () {
+  if (Granite && Granite.author && Granite.author.editables) {
+    Granite.author.editables.forEach(function (editable) {
+      if (editable.type === "project/components/cardhighlight") {
+        // Attach handlers to the configure action
+        editable.actions.forEach(function (action) {
+          if (action.id === "configure") {
+            action.handler = function () {
+              console.log("Custom configure action triggered");
+              // Your logic here before dialog opens
+            };
+          }
+        });
+      }
+    });
+  }
+});
+✅ Summary
+Option	Use Case	Result
+extraClientlibs	For dialog-only JS (when dialog opens)	❌ Not early enough
+data-sly-use.clientlib	Only when component renders HTML	❌ Not suitable for configure actions
+cq.authoring.dialog.all	Always loaded in author mode	✅ Best choice here
+Scoped JS execution	Run JS only if component is on page	✅ Prevents bloat & conflicts
+
+Let me know if you want help writing a reusable JS template for Granite.author.editables binding specific to your component.
+
+
+
+
+
+
+
+You said:
+Since it is with configure options will it not work if I use extraclientlibs property in cq:editConfig node
+
+
+ChatGPT said:
+Excellent follow-up — you're asking:
+
+If the JS is used for the Configure action (custom dialog opening), can I use extraClientlibs in the cq:editConfig node to load the JS?
+
+✅ Short Answer:
+Yes, you can use extraClientlibs in the cq:editConfig node — but it only works under certain conditions.
+
+Let me break it down:
+
+🔍 Understanding extraClientlibs on cq:editConfig
+When you add extraClientlibs under cq:editConfig, it tells AEM:
+
+"When this component is selected in the page editor, load the following clientlib(s)."
+
+✅ When it works:
+The component is already on the page, and
+
+You select or interact with it (e.g., click or hover), and
+
+You click a toolbar action like Configure, Edit, or custom actions.
+
+In that case, AEM loads the clientlibs defined in extraClientlibs so the JS can execute.
+
+❗When it does not work well:
+If you expect the JS to be available before the Configure action is clicked, and especially
+
+If you override the Configure handler in cq:actionConfig, the script must be loaded before AEM tries to execute the handler.
+
+In such cases, extraClientlibs comes too late — the JS you need hasn’t loaded yet when AEM tries to run your action handler.
+
+🧪 Your Specific Case
+You said earlier: “there is customization with configure options to call the touchui-libs JS when clicking on some icon.”
+
+This sounds like:
+
+You're overriding or customizing the configure action via cq:actionConfig or Granite.author.editables API.
+
+Your JS must be available before the click is even processed.
+
+So:
+❌ Using extraClientlibs in cq:editConfig is too late.
+✅ You need the JS to be loaded before the cq:actionConfig or editable behavior is invoked.
+
+✅ Recommendation (Based on Your Case)
+Since your JS:
+
+Runs before dialog opens,
+
+Is tied to cq:actionConfig,
+
+Needs to be globally available in author mode, even if the dialog isn't open,
+
+Then your best option is to stick with cq.authoring.dialog.all category, but:
+
+🔐 Scope It Smartly:
+js
+Copy
+Edit
+$(function () {
+  if (Granite.author && Granite.author.editables) {
+    Granite.author.editables.forEach(function (editable) {
+      if (editable.type === "project/components/cardhighlight") {
+        // Override configure action or bind before dialog opens
+        editable.actions.forEach(function (action) {
+          if (action.id === "configure") {
+            const originalHandler = action.handler;
+            action.handler = function () {
+              console.log("Custom handler BEFORE dialog opens");
+
+              // Call original behavior (open dialog)
+              if (typeof originalHandler === "function") {
+                originalHandler.apply(this, arguments);
+              }
+            };
+          }
+        });
+      }
+    });
+  }
+});
+🧠 Summary
+Option	Loads JS Early Enough for cq:actionConfig?	Use It?
+extraClientlibs in cq:dialog	❌ No	❌
+extraClientlibs in cq:editConfig	❌ No (too late for actionConfig override)	❌
+Include in component HTL	❌ JS won't run unless component renders	❌
+cq.authoring.dialog.all + scoped logic	✅ Yes	✅ Best Option
