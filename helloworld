@@ -1,45 +1,18 @@
 Hello world!
-(function(document, $, Coral) {
-    "use strict";
-
-    // Run logic only when a dialog or editable content is loaded
-    $(document).on("foundation-contentloaded", function(e) {
-        // Optional: narrow down to only your component dialog
-        const $dialog = $(e.target).closest(".cq-dialog");
-        if (!$dialog.length || !$dialog.find("[data-accordion-init]").length) {
-            return;
-        }
-
-        // Define accordion editor utility once dialog is loaded
-        const AccordionEditor = function() {
-            this.addLink = function(component, linkResourceType) {
-                BCUS.Lists.ListsEditor.addListItem(component, {
-                    "sling:resourceType": linkResourceType,
-                    listItemNameBase: "accordionItem"
-                }).done(function() {
-                    location.reload();
-                });
+$(function () {
+  if (Granite && Granite.author && Granite.author.editables) {
+    Granite.author.editables.forEach(function (editable) {
+      if (editable.type === "project/components/cardhighlight") {
+        // Attach handlers to the configure action
+        editable.actions.forEach(function (action) {
+          if (action.id === "configure") {
+            action.handler = function () {
+              console.log("Custom configure action triggered");
+              // Your logic here before dialog opens
             };
-
-            this.moveUp = function(component) {
-                BCUS.Lists.ListsEditor.moveBackward(component)
-                    .then(function() {
-                        location.reload();
-                    });
-            };
-
-            this.moveDown = function(component) {
-                BCUS.Lists.ListsEditor.moveForward(component)
-                    .then(function() {
-                        location.reload();
-                    });
-            };
-        };
-
-        // Register under global BCUS namespace
-        window.BCUS = window.BCUS || {};
-        BCUS.Author = BCUS.Author || {};
-        BCUS.Author.Accordion = new AccordionEditor();
+          }
+        });
+      }
     });
-
-})(document, Granite.$, Coral);
+  }
+});
