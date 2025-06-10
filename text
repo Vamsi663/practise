@@ -1,3 +1,95 @@
+
+<%@page session="false" import="org.apache.commons.lang.StringUtils,
+                                    com.adobe.granite.ui.components.Config,
+                                    com.day.cq.wcm.api.AuthoringUIMode,
+                                    com.day.cq.wcm.api.AuthoringUIModeService" %><%
+%><%@include file="/libs/granite/ui/global.jsp" %><%
+%><body class="coral--light"><%
+
+    Config cfg = cmp.getConfig();
+    AuthoringUIModeService authoringUIModeService = sling.getService(AuthoringUIModeService.class);
+
+    %><div class="foundation-authoring-ui-mode hidden"
+           data-classic-editor-url="<%= xssAPI.encodeForHTMLAttr(authoringUIModeService.getEditorURL(AuthoringUIMode.CLASSIC)) %>"></div><%
+
+    Resource content = resource.getChild("content");
+	String pagePath = "";
+    if (content != null) {
+        ValueMap contentVm = content.adaptTo(ValueMap.class);
+        String contentResourceType = contentVm.get("sling:resourceType", "granite/ui/components/coral/foundation/container");
+        String suffix = slingRequest.getRequestPathInfo().getSuffix();
+        if (suffix != null) {
+            // resolve suffix to take aliases into account
+            String contentPath = resourceResolver.resolve(suffix).getPath();
+            pagePath = resourceResolver.resolve(suffix).getPath();
+            // re-append possible .html extension
+            if (suffix.endsWith(".html")) {
+                contentPath += ".html";
+            }
+            // make the current path available
+            %><div class="foundation-content-path hidden"
+                   data-foundation-content-path="<%= xssAPI.encodeForHTMLAttr(contentPath) %>"></div><%
+        }
+        %><sling:include path="<%= content.getPath() %>" resourceType="<%= contentResourceType %>" /><%
+    }
+
+    String mainClientLib = cfg.get("mainClientLib", "cq.authoring.editor.core");
+%>
+    <%-- "Main" client library (should optimize the number of requests by embedding all the extensions (plugins, hooks) --%>
+    <ui:includeClientLib js="<%= mainClientLib %>"/>
+
+    <%-- Dialog widgets (embedded category) --%>
+    <ui:includeClientLib js="cq.authoring.dialog.all"/>
+                                <% if (pagePath != null && pagePath.startsWith("/content/pl-corp")) { %>
+    <ui:includeClientLib js="plweb-dsys.base"/>
+<% } %>
+    <%-- Deprecated, but here for backward compatibility --%>
+    <ui:includeClientLib js="<%= StringUtils.join(cfg.get("extraClientLibs", new String[0]), ",") %>" />
+    <sling:include replaceSelectors="includeJsLibs"/>
+    <script type="text/javascript">
+        (function() {
+            var cfg = <%
+                try {
+                    sling.getService(com.day.cq.wcm.undo.UndoConfigService.class)
+                            .writeClientConfig(out);
+                } catch (Exception e) {
+                    // ignore
+                }
+            %>;
+
+            <%
+                String contentPath = slingRequest.getRequestPathInfo().getSuffix();
+                if (contentPath != null) {%>
+                    cfg.pagePath = "<%= xssAPI.encodeForJSString(contentPath) %>";<%
+                }
+            %>
+
+            Granite.author.history.Manager.init(cfg);
+            $(document).ready(function() {
+                Granite.author.history.Manager.detectCachedPage(<%= System.currentTimeMillis() %>);
+            });
+
+            // Set the language for moment.js
+            moment.locale(Granite.I18n.getLocale());
+        })();
+    </script>
+</body>
+
+
+<% if (pagePath != null && pagePath.startsWith("/content/pl-corp")) { %>
+    <ui:includeClientLib js="plweb-dsys.base"/>
+<% } %>
+
+/apps/cq/gui/components/authoring/editors/core/body.jsp
+
+
+
+
+
+
+
+
+
 (function($, ns) {
     "use strict";
 
