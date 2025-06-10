@@ -1,3 +1,35 @@
+(function waitForAuthoringReady() {
+  if (window.Granite?.author?.editables && Granite.author.editables.length > 0) {
+    // Your logic here
+    Granite.author.editables.forEach(function (editable) {
+      if (editable.type === "project/components/cardhighlight") {
+        editable.actions.forEach(function (action) {
+          if (action.id === "configure") {
+            const original = action.handler;
+            action.handler = function () {
+              console.log("✅ Custom handler triggered!");
+              // Your custom logic before dialog opens
+
+              // Then call original dialog open handler
+              if (typeof original === "function") {
+                original.apply(this, arguments);
+              }
+            };
+          }
+        });
+      }
+    });
+  } else {
+    // Retry after short delay
+    setTimeout(waitForAuthoringReady, 200);
+  }
+})();
+
+
+
+
+
+
 Why extraClientlibs Doesn't Work
 extraClientlibs only loads scripts when the dialog opens — but your use case is different:
 
