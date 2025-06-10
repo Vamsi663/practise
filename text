@@ -1,4 +1,20 @@
 
+<sly data-sly-test="${wcmmode.edit}">
+  <script>
+    window.addEventListener("load", function () {
+      setTimeout(function () {
+        var script = document.createElement("script");
+        script.src = "/etc.clientlibs/yourproject/components/your-component/touchui-libs.js";
+        document.head.appendChild(script);
+      }, 1500);
+    });
+  </script>
+</sly>
+
+
+
+
+
 <%@page session="false" import="org.apache.commons.lang.StringUtils,
                                     com.adobe.granite.ui.components.Config,
                                     com.day.cq.wcm.api.AuthoringUIMode,
