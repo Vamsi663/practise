@@ -1,3 +1,46 @@
+(function($, ns) {
+    "use strict";
+
+    $(document).on("foundation-contentloaded", function(e) {
+        if (!Granite.author || !Granite.author.isTouchAuthoring()) {
+            return;
+        }
+
+        var BCUS = window.BCUS = window.BCUS || {};
+        BCUS.Author = BCUS.Author || {};
+        BCUS.Author.Accordion = new function(ns, channel) {
+            var LinkListEditor = function() {
+                this.addLink = function(component, linkResourceType) {
+                    BCUS.Lists.ListsEditor.addListItem(component, {
+                        "sling:resourceType": linkResourceType,
+                        listItemNameBase: "accordionitem"
+                    }).done(function() {
+                        location.reload();
+                    });
+                };
+
+                this.moveUp = function(component) {
+                    BCUS.Lists.ListsEditor.moveBackward(component).then(function() {
+                        location.reload();
+                    });
+                };
+
+                this.moveDown = function(component) {
+                    BCUS.Lists.ListsEditor.moveForward(component).then(function() {
+                        location.reload();
+                    });
+                };
+            };
+
+            return new LinkListEditor();
+        }(Granite.author, $(document));
+    });
+
+})(jQuery, Granite.author);
+
+
+
+
 (function waitForAuthoringReady() {
   if (window.Granite?.author?.editables && Granite.author.editables.length > 0) {
     // Your logic here
