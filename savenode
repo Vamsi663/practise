@@ -1,0 +1,155 @@
+public class Rate {
+    private Double interestRate;
+    private Double annualYield;
+    private Double minimumBalance;
+    private Double maximumBalance;
+    private Integer termsInMonths;
+    private String tierName;
+    private String effectiveDate;
+    // Getters and setters
+}
+
+public class ProductMapping {
+    private String subProductType;
+    private List<Rate> rates;
+    // Getters and setters
+}
+
+public class PartnerProductMapping {
+    private String brand;
+    private List<ProductMapping> productMappings;
+    // Getters and setters
+}
+
+public class Data {
+    private String productType;
+    private List<PartnerProductMapping> partnerProductMappings;
+    // Getters and setters
+}
+
+public class Meta {
+    private String lastSyncTimestamp;
+    private boolean isStale;
+    private String correlationId;
+    private Data data;
+    // Getters and setters
+}
+
+@SlingServletPaths("/bin/store/json-to-jcr")
+@Service(Servlet.class)
+public class StoreJsonServlet extends SlingAllMethodsServlet {
+
+    @Reference
+    private ResourceResolverFactory resolverFactory;
+
+    @Override
+    protected void doPost(SlingHttpServletRequest request, SlingHttpServletResponse response)
+            throws ServletException, IOException {
+
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            Meta metaData = mapper.readValue(request.getInputStream(), Meta.class);
+
+            Map<String, Object> param = Map.of(ResourceResolverFactory.SUBSERVICE, "datawriter");
+
+            try (ResourceResolver resolver = resolverFactory.getServiceResourceResolver(param)) {
+                Session session = resolver.adaptTo(Session.class);
+                Node baseNode = JcrUtil.createPath("/content/productdata", "nt:unstructured", session);
+
+                // Meta Node
+                Node metaNode = JcrUtil.createPath(baseNode.getPath() + "/meta", "nt:unstructured", session);
+                metaNode.setProperty("lastSyncTimestamp", metaData.getLastSyncTimestamp());
+                metaNode.setProperty("isStale", metaData.isStale());
+                metaNode.setProperty("correlationId", metaData.getCorrelationId());
+
+                // Data Node
+                Data data = metaData.getData();
+                Node dataNode = JcrUtil.createPath(baseNode.getPath() + "/data", "nt:unstructured", session);
+                dataNode.setProperty("productType", data.getProductType());
+
+                // Stream through partnerProductMappings
+                data.getPartnerProductMappings().stream().forEach(partner -> {
+                    try {
+                        Node partnerNode = dataNode.addNode(partner.getBrand(), "nt:unstructured");
+
+                        partner.getProductMappings().stream().forEach(productMapping -> {
+                            try {
+                                Node subProductNode = partnerNode.addNode(productMapping.getSubProductType(), "nt:unstructured");
+
+                                AtomicInteger counter = new AtomicInteger(0);
+                                productMapping.getRates().stream()
+                                    .filter(Objects::nonNull)
+                                    .forEach(rate -> {
+                                        try {
+                                            Node rateNode = subProductNode.addNode("rate" + counter.getAndIncrement(), "nt:unstructured");
+
+                                            Optional.ofNullable(rate.getInterestRate()).ifPresent(val -> setProperty(rateNode, "interestRate", val));
+                                            Optional.ofNullable(rate.getAnnualYield()).ifPresent(val -> setProperty(rateNode, "annualYield", val));
+                                            Optional.ofNullable(rate.getMinimumBalance()).ifPresent(val -> setProperty(rateNode, "minimumBalance", val));
+                                            Optional.ofNullable(rate.getMaximumBalance()).ifPresent(val -> setProperty(rateNode, "maximumBalance", val));
+                                            Optional.ofNullable(rate.getTermsInMonths()).ifPresent(val -> setProperty(rateNode, "termsInMonths", val));
+                                            Optional.ofNullable(rate.getTierName()).ifPresent(val -> setProperty(rateNode, "tierName", val));
+                                            Optional.ofNullable(rate.getEffectiveDate()).ifPresent(val -> setProperty(rateNode, "effectiveDate", val));
+
+                                        } catch (RepositoryException e) {
+                                            log.error("Error creating rate node", e);
+                                        }
+                                    });
+
+                            } catch (RepositoryException e) {
+                                log.error("Error creating subProduct node", e);
+                            }
+                        });
+
+                    } catch (RepositoryException e) {
+                        log.error("Error creating partner node", e);
+                    }
+                });
+
+                session.save();
+                String trackingId = metaData.getCorrelationId(); // Or UUID.randomUUID().toString() if no correlation ID is provided
+                
+                ObjectNode responseJson = mapper.createObjectNode();
+                ObjectNode dataNodeJson = responseJson.putObject("data");
+                
+                dataNodeJson.put("status", "ACCEPTED");
+                dataNodeJson.put("trackingId", trackingId);
+                dataNodeJson.put("message", "success");
+                
+                response.setContentType("application/json");
+                response.setStatus(HttpServletResponse.SC_OK);
+                mapper.writeValue(response.getWriter(), responseJson);
+                                response.getWriter().write("JSON data stored successfully.");
+
+            }
+        } catch (Exception e) {
+           response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            ObjectNode errorResponse = mapper.createObjectNode();
+            ObjectNode errorData = errorResponse.putObject("data");
+            
+            errorData.put("status", "FAILED");
+            errorData.put("trackingId", UUID.randomUUID().toString());
+            errorData.put("message", e.getMessage());
+            
+            response.setContentType("application/json");
+            mapper.writeValue(response.getWriter(), errorResponse);
+        }
+    }
+
+    private void setProperty(Node node, String name, Object value) {
+        try {
+            if (value instanceof Double) {
+                node.setProperty(name, (Double) value);
+            } else if (value instanceof Integer) {
+                node.setProperty(name, (Integer) value);
+            } else {
+                node.setProperty(name, value.toString());
+            }
+        } catch (RepositoryException e) {
+                log.error("Error setting property: " + name, e);
+        }
+    }
+}
+
+
+
