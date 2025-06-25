@@ -52,7 +52,7 @@ public class StoreJsonServlet extends SlingAllMethodsServlet {
         String trackingId = UUID.randomUUID().toString();
 
         try {
-            // Parse only the "data" part
+            // Parse only the "data" node from the JSON
             JsonNode rootNode = mapper.readTree(request.getInputStream());
             JsonNode dataNode = rootNode.get("data");
             Data data = mapper.treeToValue(dataNode, Data.class);
@@ -64,34 +64,33 @@ public class StoreJsonServlet extends SlingAllMethodsServlet {
                 Node baseNode = JcrUtil.createPath("/content/productdata", "nt:unstructured", session);
 
                 Node dataJcrNode = JcrUtil.createPath(baseNode.getPath() + "/data", "nt:unstructured", session);
-                dataJcrNode.setProperty("productType", data.getProductType());
+                setProperty(dataJcrNode, "productType", data.getProductType());
 
-                data.getPartnerProductMappings().stream().forEach(partner -> {
+                data.getPartnerProductMappings().forEach(partner -> {
                     try {
                         Node partnerNode = dataJcrNode.addNode(partner.getBrand(), "nt:unstructured");
 
-                        partner.getProductMappings().stream().forEach(productMapping -> {
+                        partner.getProductMappings().forEach(productMapping -> {
                             try {
                                 Node subProductNode = partnerNode.addNode(productMapping.getSubProductType(), "nt:unstructured");
 
                                 AtomicInteger counter = new AtomicInteger(0);
-                                productMapping.getRates().stream()
-                                        .filter(Objects::nonNull)
-                                        .forEach(rate -> {
-                                            try {
-                                                Node rateNode = subProductNode.addNode("rate" + counter.getAndIncrement(), "nt:unstructured");
+                                productMapping.getRates().forEach(rate -> {
+                                    try {
+                                        Node rateNode = subProductNode.addNode("rate" + counter.getAndIncrement(), "nt:unstructured");
 
-                                                Optional.ofNullable(rate.getInterestRate()).ifPresent(val -> setProperty(rateNode, "interestRate", val));
-                                                Optional.ofNullable(rate.getAnnualYield()).ifPresent(val -> setProperty(rateNode, "annualYield", val));
-                                                Optional.ofNullable(rate.getMinimumBalance()).ifPresent(val -> setProperty(rateNode, "minimumBalance", val));
-                                                Optional.ofNullable(rate.getMaximumBalance()).ifPresent(val -> setProperty(rateNode, "maximumBalance", val));
-                                                Optional.ofNullable(rate.getTermsInMonths()).ifPresent(val -> setProperty(rateNode, "termsInMonths", val));
-                                                Optional.ofNullable(rate.getTierName()).ifPresent(val -> setProperty(rateNode, "tierName", val));
-                                                Optional.ofNullable(rate.getEffectiveDate()).ifPresent(val -> setProperty(rateNode, "effectiveDate", val));
-                                            } catch (RepositoryException e) {
-                                                log.error("Error creating rate node", e);
-                                            }
-                                        });
+                                        setProperty(rateNode, "interestRate", rate.getInterestRate());
+                                        setProperty(rateNode, "annualYield", rate.getAnnualYield());
+                                        setProperty(rateNode, "minimumBalance", rate.getMinimumBalance());
+                                        setProperty(rateNode, "maximumBalance", rate.getMaximumBalance());
+                                        setProperty(rateNode, "termsInMonths", rate.getTermsInMonths());
+                                        setProperty(rateNode, "tierName", rate.getTierName());
+                                        setProperty(rateNode, "effectiveDate", rate.getEffectiveDate());
+
+                                    } catch (RepositoryException e) {
+                                        log.error("Error creating rate node", e);
+                                    }
+                                });
 
                             } catch (RepositoryException e) {
                                 log.error("Error creating subProduct node", e);
@@ -105,7 +104,7 @@ public class StoreJsonServlet extends SlingAllMethodsServlet {
 
                 session.save();
 
-                // Response JSON
+                // Send success response
                 ObjectNode responseJson = mapper.createObjectNode();
                 ObjectNode dataResponse = responseJson.putObject("data");
                 dataResponse.put("status", "ACCEPTED");
@@ -121,30 +120,26 @@ public class StoreJsonServlet extends SlingAllMethodsServlet {
             log.error("Error storing data", e);
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 
-            ObjectNode errorJson = mapper.createObjectNode();
+            ObjectMapper errorMapper = new ObjectMapper();
+            ObjectNode errorJson = errorMapper.createObjectNode();
             ObjectNode errorData = errorJson.putObject("data");
             errorData.put("status", "FAILED");
             errorData.put("trackingId", trackingId);
             errorData.put("message", e.getMessage());
 
             response.setContentType("application/json");
-            mapper.writeValue(response.getWriter(), errorJson);
+            errorMapper.writeValue(response.getWriter(), errorJson);
         }
     }
 
-    private void setProperty(Node node, String name, Object value) {
+    // ✅ Simplified setProperty for string fields
+    private void setProperty(Node node, String name, String value) {
         try {
-            if (value instanceof Double) {
-                node.setProperty(name, (Double) value);
-            } else if (value instanceof Integer) {
-                node.setProperty(name, (Integer) value);
-            } else {
-                node.setProperty(name, value.toString());
+            if (value != null) {
+                node.setProperty(name, value);
             }
         } catch (RepositoryException e) {
             log.error("Error setting property: " + name, e);
         }
     }
 }
-
-
