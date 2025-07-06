@@ -1,139 +1,63 @@
-@Component(
-    service = Servlet.class,
+@Component(service = Servlet.class,
     property = {
-        SLING_SERVLET_PATHS + "=/bin/bcuspublic/getRatesBySubProductType",
-        Constants.SERVICE_DESCRIPTION + "=Get Rates by SubProductType Servlet"
-    }
-)
-public class GetRatesBySubProductTypeServlet extends SlingAllMethodsServlet {
-
-    @Override
-    protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws ServletException, IOException {
-        String subProductType = request.getParameter("subProductType");
-        JSONObject responseJson = new JSONObject();
-        JSONArray ratesArray = new JSONArray();
-
-        if (subProductType == null || subProductType.trim().isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write("{\"message\": \"subProductType is required\"}");
-            return;
-        }
-
-        try {
-            ResourceResolver resolver = request.getResourceResolver();
-            Resource savingsRoot = resolver.getResource("/content/project/data/savings");
-
-            if (savingsRoot != null) {
-                Iterator<Resource> depositResources = savingsRoot.getChildren().iterator();
-                while (depositResources.hasNext()) {
-                    Resource deposit = depositResources.next();
-                    Resource subProduct = deposit.getChild(subProductType.toLowerCase());
-                    if (subProduct != null) {
-                        Resource rates = subProduct.getChild("rates");
-                        if (rates != null) {
-                            for (Resource rate : rates.getChildren()) {
-                                JSONObject rateJson = new JSONObject();
-                                rate.getValueMap().forEach((key, value) ->
-                                    rateJson.put(key, value != null ? value.toString() : JSONObject.NULL)
-                                );
-                                ratesArray.put(rateJson);
-                            }
-                        }
-                    }
-                }
-            }
-
-            responseJson.put("rates", ratesArray);
-            response.setContentType("application/json");
-            response.getWriter().write(responseJson.toString());
-
-        } catch (Exception e) {
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.getWriter().write("{\"message\": \"An error occurred while retrieving rates.\"}");
-        }
-    }
-}
-
-With selector
-
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.sling.api.SlingHttpServletRequest;
-import org.apache.sling.api.SlingHttpServletResponse;
-import org.apache.sling.api.resource.Resource;
-import org.apache.sling.api.resource.ResourceResolver;
-import org.apache.sling.api.servlets.SlingAllMethodsServlet;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.osgi.framework.Constants;
-import org.osgi.service.component.annotations.Component;
-
-import javax.servlet.Servlet;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.Iterator;
-
-import static org.apache.sling.api.servlets.ServletResolverConstants.SLING_SERVLET_RESOURCE_TYPES;
-
-@Component(
-    service = Servlet.class,
-    property = {
-        "sling.servlet.paths=/bin/bcuspublic/getRatesBySubProductType",
         "sling.servlet.methods=GET",
-        Constants.SERVICE_DESCRIPTION + "=Get Rates by SubProductType with deposit selector"
+        "sling.servlet.resourceTypes=bcuspublic/components/page/deposit-page",
+        "sling.servlet.selectors=deposits",
+        "sling.servlet.extensions=json"
     }
 )
-public class GetRatesBySubProductTypeServlet extends SlingAllMethodsServlet {
+public class FetchRatesServlet extends SlingSafeMethodsServlet {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FetchRatesServlet.class);
 
     @Override
-    protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws ServletException, IOException {
+    protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response)
+            throws ServletException, IOException {
+
         String[] selectors = request.getRequestPathInfo().getSelectors();
-        String subProductType = request.getParameter("subProductType");
 
-        JSONObject responseJson = new JSONObject();
-        JSONArray ratesArray = new JSONArray();
-
-        if (selectors.length == 0 || selectors[0] == null || subProductType == null || subProductType.trim().isEmpty()) {
+        if (selectors.length < 2) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write("{\"message\": \"Missing required selector or parameter\"}");
+            response.getWriter().write("{\"error\": \"Missing offerInstanceId selector\"}");
             return;
         }
 
-        String depositNode = selectors[0];
+        String offerInstanceId = selectors[1]; // selector[0] = "deposits", selector[1] = offerInstanceId
+
+        String basePath = "/content/bcuspublic/data/savings/deposits/productRates";
+        ResourceResolver resolver = request.getResourceResolver();
 
         try {
-            ResourceResolver resolver = request.getResourceResolver();
-            Resource savingsRoot = resolver.getResource("/content/project/data/savings");
+            Resource productRatesRoot = resolver.getResource(basePath);
+            if (productRatesRoot == null) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
 
-            if (savingsRoot != null) {
-                Resource deposit = savingsRoot.getChild(depositNode);
-                if (deposit != null) {
-                    Resource subProduct = deposit.getChild(subProductType.toLowerCase());
-                    if (subProduct != null) {
-                        Resource rates = subProduct.getChild("rates");
-                        if (rates != null) {
-                            for (Resource rate : rates.getChildren()) {
-                                JSONObject rateJson = new JSONObject();
-                                rate.getValueMap().forEach((key, value) ->
-                                    rateJson.put(key, value != null ? value.toString() : JSONObject.NULL)
-                                );
-                                ratesArray.put(rateJson);
-                            }
+            for (Resource productRateNode : productRatesRoot.getChildren()) {
+                ValueMap props = productRateNode.getValueMap();
+                if (offerInstanceId.equals(props.get("offerInstanceId", String.class))) {
+                    Resource ratesNode = productRateNode.getChild("rates");
+                    if (ratesNode != null) {
+                        List<Map<String, Object>> rates = new ArrayList<>();
+                        for (Resource item : ratesNode.getChildren()) {
+                            Map<String, Object> rateMap = new HashMap<>(item.getValueMap());
+                            rates.add(rateMap);
                         }
+                        response.setContentType("application/json");
+                        response.getWriter().write(new ObjectMapper().writeValueAsString(rates));
+                        return;
                     }
                 }
             }
 
-            responseJson.put("rates", ratesArray);
-            response.setContentType("application/json");
-            response.getWriter().write(responseJson.toString());
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            response.getWriter().write("{\"error\": \"No rates found\"}");
 
         } catch (Exception e) {
+            LOG.error("Failed to fetch rates for offerInstanceId={}", offerInstanceId, e);
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.getWriter().write("{\"message\": \"An error occurred while retrieving rates.\"}");
+            response.getWriter().write("{\"error\": \"Internal error\"}");
         }
     }
 }
-
-
