@@ -1,0 +1,81 @@
+import com.bcuspublic.wcm.service.deposits.FetchRatesService;
+import com.bcuspublic.wcm.servlet.deposits.FetchRatesServlet;
+import org.apache.sling.api.SlingHttpServletRequest;
+import org.apache.sling.api.SlingHttpServletResponse;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.*;
+
+import javax.servlet.ServletException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.IOException;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.*;
+
+class FetchRatesServletTest {
+
+    @InjectMocks
+    private FetchRatesServlet servlet;
+
+    @Mock
+    private FetchRatesService fetchRatesService;
+
+    @Mock
+    private SlingHttpServletRequest request;
+
+    @Mock
+    private SlingHttpServletResponse response;
+
+    private StringWriter responseWriter;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        MockitoAnnotations.openMocks(this);
+        responseWriter = new StringWriter();
+        when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
+    }
+
+    @Test
+    void testDoGet_successfulResponse() throws ServletException, IOException {
+        String[] selectors = {"deposits", "test-offer-instance-id"};
+        when(request.getRequestPathInfo().getSelectors()).thenReturn(selectors);
+
+        JSONArray mockRates = new JSONArray();
+        JSONObject obj = new JSONObject();
+        obj.put("interestRate", "4.0");
+        mockRates.put(obj);
+
+        when(fetchRatesService.getRates("test-offer-instance-id")).thenReturn(mockRates);
+
+        servlet.doGet(request, response);
+
+        verify(response).setContentType("application/json");
+        assertTrue(responseWriter.toString().contains("interestRate"));
+    }
+
+    @Test
+    void testDoGet_missingSelector() throws IOException {
+        when(request.getRequestPathInfo().getSelectors()).thenReturn(new String[]{"deposits"});
+
+        servlet.doGet(request, response);
+
+        verify(response).setStatus(SlingHttpServletResponse.SC_BAD_REQUEST);
+        assertTrue(responseWriter.toString().contains("No selectors specified"));
+    }
+
+    @Test
+    void testDoGet_serviceException() throws Exception {
+        String[] selectors = {"deposits", "bad-id"};
+        when(request.getRequestPathInfo().getSelectors()).thenReturn(selectors);
+        when(fetchRatesService.getRates("bad-id")).thenThrow(new RuntimeException("Service error"));
+
+        servlet.doGet(request, response);
+
+        verify(response).setStatus(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        assertTrue(responseWriter.toString().contains("Error while fetching rates"));
+    }
+}
