@@ -129,6 +129,89 @@ public void testStoreRates_existingNodes() throws Exception {
 }
 
 
+import com.bcuspublic.wcm.constants.DepositConstants;
+import com.bcuspublic.wcm.service.deposits.FetchRatesServiceImpl;
+import com.bcuspublic.wcm.service.common.ResourceResolvers;
+import org.apache.sling.api.resource.*;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.*;
+
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class FetchRatesServiceImplTest {
+
+    @InjectMocks
+    private FetchRatesServiceImpl fetchRatesService;
+
+    @Mock
+    private ResourceResolvers resourceResolvers;
+
+    @Mock
+    private ResourceResolver resourceResolver;
+
+    @Mock
+    private Resource ratesResource;
+
+    @Mock
+    private Resource childResource;
+
+    @Mock
+    private ValueMap valueMap;
+
+    @BeforeEach
+    void setUp() throws LoginException {
+        MockitoAnnotations.openMocks(this);
+        when(resourceResolvers.getResourceResolver(ResourceResolvers.SubService.READ_CONTENT))
+            .thenReturn(resourceResolver);
+    }
+
+    @Test
+    void testGetRates_returnsValidRatesArray() {
+        String offerInstanceId = "test-offer-id";
+        String expectedPath = DepositConstants.RATES_STORE_PATH + "/" +
+                              DepositConstants.OFFER_INSTANCES + "/" +
+                              offerInstanceId + "/" +
+                              DepositConstants.RATES;
+
+        when(resourceResolver.getResource(expectedPath)).thenReturn(ratesResource);
+        when(ratesResource.getChildren()).thenReturn(Collections.singleton(childResource));
+        when(childResource.getValueMap()).thenReturn(valueMap);
+
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("interestRate", "4.5");
+        properties.put("annualYield", "4.4");
+
+        when(valueMap.entrySet()).thenReturn(properties.entrySet());
+
+        JSONArray result = fetchRatesService.getRates(offerInstanceId);
+
+        assertEquals(1, result.length());
+        JSONObject obj = result.getJSONObject(0);
+        assertEquals("4.5", obj.get("interestRate"));
+        assertEquals("4.4", obj.get("annualYield"));
+    }
+
+    @Test
+    void testGetRates_returnsEmptyArray_whenResourceIsNull() {
+        when(resourceResolver.getResource(anyString())).thenReturn(null);
+        JSONArray result = fetchRatesService.getRates("non-existent-id");
+        assertEquals(0, result.length());
+    }
+
+    @Test
+    void testGetRates_handlesException() throws LoginException {
+        when(resourceResolvers.getResourceResolver(any())).thenThrow(new RuntimeException("test failure"));
+        JSONArray result = fetchRatesService.getRates("id-causing-error");
+        assertEquals(0, result.length());
+    }
+}
+
 
 
 
