@@ -279,7 +279,62 @@ public class FetchRatesServiceTest {
     }
 }
 
+    @Mock
+    private ResourceResolvers resourceResolvers;
 
+    @Mock
+    private ResourceResolver resourceResolver;
+
+    @Mock
+    private Resource ratesResource;
+
+    @Mock
+    private Resource childResource;
+
+    private FetchRatesServiceImpl fetchRatesService;
+
+    @Before
+    public void setup() throws Exception {
+        MockitoAnnotations.initMocks(this);
+        fetchRatesService = new FetchRatesServiceImpl();
+        when(resourceResolvers.getResourceResolver(SubService.READ_CONTENT)).thenReturn(resourceResolver);
+    }
+
+    @Test
+    public void testGetRates_returnsValidRatesArray() throws Exception {
+        String offerInstanceId = "test-offer-id";
+        String expectedPath = "/content/bcuspublic/data/deposits/offerinstances/" + offerInstanceId + "/rates";
+
+        // Mock getResource
+        when(resourceResolver.getResource(expectedPath)).thenReturn(ratesResource);
+
+        // Mock getChildren
+        Iterable<Resource> children = Collections.singletonList(childResource);
+        when(ratesResource.getChildren()).thenReturn(children);
+
+        // Mock ValueMap
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("interestRate", "4.5");
+        properties.put("annualYield", "4.4");
+        ValueMap valueMap = new ModifiableValueMapDecorator(properties);
+        when(childResource.getValueMap()).thenReturn(valueMap);
+
+        JSONArray result = fetchRatesService.getRates(offerInstanceId, resourceResolver);
+
+        assertEquals(1, result.length());
+        JSONObject obj = result.getJSONObject(0);
+        assertEquals("4.5", obj.get("interestRate"));
+        assertEquals("4.4", obj.get("annualYield"));
+    }
+
+    @Test
+    public void testGetRates_returnsEmptyArray_whenResourceIsNull() throws Exception {
+        when(resourceResolver.getResource(anyString())).thenReturn(null);
+
+        JSONArray result = fetchRatesService.getRates("non-existent-id", resourceResolver);
+
+        assertEquals(0, result.length());
+    }
 
 
 
