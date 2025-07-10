@@ -213,6 +213,72 @@ class FetchRatesServiceImplTest {
 }
 
 
+@ExtendWith(MockitoExtension.class)
+public class FetchRatesServiceTest {
+
+    @InjectMocks
+    private FetchRatesService fetchRatesService;
+
+    @Mock
+    private ResourceResolver resourceResolver;
+
+    @Mock
+    private Resource ratesResource;
+
+    @Mock
+    private Resource childResource;
+
+    @Mock
+    private ValueMap valueMap;
+
+    @BeforeEach
+    void setup() {
+        // No-op if using @ExtendWith + @Mock
+    }
+
+    @Test
+    public void testGetRates_returnsValidRatesArray() throws Exception {
+        String offerInstanceId = "test-offer-id";
+        String expectedPath = "/content/bcuspublic/data/deposits/offerinstances/" + offerInstanceId + "/rates";
+
+        // Mock resource resolution
+        when(resourceResolver.getResource(expectedPath)).thenReturn(ratesResource);
+
+        // Mock child iteration
+        Iterator<Resource> iterator = Mockito.mock(Iterator.class);
+        when(ratesResource.getChildren()).thenReturn(() -> iterator); // Iterable lambda
+
+        when(iterator.hasNext()).thenReturn(true, false);
+        when(iterator.next()).thenReturn(childResource);
+
+        // Mock value map
+        Map<String, Object> props = new HashMap<>();
+        props.put("interestRate", "4.5");
+        props.put("annualYield", "4.4");
+
+        when(childResource.getValueMap()).thenReturn(new ValueMapDecorator(props));
+
+        // Execute
+        JSONArray result = fetchRatesService.getRates(offerInstanceId, resourceResolver);
+
+        // Assert
+        Assert.assertEquals(1, result.length());
+        JSONObject obj = result.getJSONObject(0);
+        Assert.assertEquals("4.5", obj.get("interestRate"));
+        Assert.assertEquals("4.4", obj.get("annualYield"));
+    }
+
+    @Test
+    public void testGetRates_returnsEmptyArray_whenResourceIsNull() throws Exception {
+        String offerInstanceId = "non-existent-id";
+        when(resourceResolver.getResource(anyString())).thenReturn(null);
+
+        JSONArray result = fetchRatesService.getRates(offerInstanceId, resourceResolver);
+
+        Assert.assertEquals(0, result.length());
+    }
+}
+
 
 
 
