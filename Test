@@ -1,25 +1,6 @@
 @Test
 public void test_storeRates_save_repositoryException() throws Exception {
-    StoreRatesRequest request = mockNullRequest();
-    
-    // 🔍 Confirm data is actually set — debug or log here
-    System.out.println("DEBUG request = " + request);
-    System.out.println("DEBUG data = " + request.getData());
-    System.out.println("DEBUG productRates = " + request.getData().getProductRates());
-
-    StoreRatesServiceImpl storeRatesService1 = new StoreRatesServiceImpl();
-    Session mockSession = Mockito.mock(Session.class);
-
-    Mockito.doThrow(new RepositoryException("Simulated RepositoryException")).when(mockSession).save();
-    Mockito.when(resourceResolvers.getResourceResolver(SubService.WRITE_CONTENT)).thenReturn(resourceResolver);
-    Mockito.when(resourceResolver.adaptTo(Session.class)).thenReturn(mockSession);
-
-    storeRatesService1.storeRates(request, resourceResolvers);
-}
-
-
-@Test
-public void test_storeRates_save_repositoryException() throws Exception {
+    // Create the request manually to ensure non-null data
     StoreRatesRequest request = new StoreRatesRequest();
     Data data = new Data();
     ProductRates productRates = new ProductRates();
@@ -29,17 +10,20 @@ public void test_storeRates_save_repositoryException() throws Exception {
 
     Rates rates = new Rates();
     rates.set("dummyKey", "dummyValue");
+
     productRates.setRates(Collections.singletonList(rates));
-
     data.setProductRates(Collections.singletonList(productRates));
-    request.setData(data);
+    request.setData(data);  // ✅ This was missing
 
+    // Create service instance
     StoreRatesServiceImpl storeRatesService1 = new StoreRatesServiceImpl();
-    Session mockSession = Mockito.mock(Session.class);
 
+    // Mock session & repository exception
+    Session mockSession = Mockito.mock(Session.class);
     Mockito.doThrow(new RepositoryException("Simulated RepositoryException")).when(mockSession).save();
     Mockito.when(resourceResolvers.getResourceResolver(SubService.WRITE_CONTENT)).thenReturn(resourceResolver);
     Mockito.when(resourceResolver.adaptTo(Session.class)).thenReturn(mockSession);
 
+    // This should not crash, only log the error
     storeRatesService1.storeRates(request, resourceResolvers);
 }
