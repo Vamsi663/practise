@@ -1,20 +1,22 @@
-private StoreRatesRequest mockNullRequest() throws IOException {
-    StoreRatesRequest storeRatesRequest = new StoreRatesRequest();
-    Data data = new Data();
+@Test
+public void test_storeRates_save_repositoryException() throws Exception {
+    StoreRatesRequest request = mockNullRequest();
+    
+    // 🔍 Confirm data is actually set — debug or log here
+    System.out.println("DEBUG request = " + request);
+    System.out.println("DEBUG data = " + request.getData());
+    System.out.println("DEBUG productRates = " + request.getData().getProductRates());
 
-    ProductRates productRates = new ProductRates();
-    productRates.setOfferInstanceId("new-offer-instance-id");
-    productRates.setOfferProductId("a1b2c3d4-e5f6-7890-abcd-ef1234567892");
-    productRates.setProductName("Dummy Product"); // ✅ not null
+    StoreRatesServiceImpl storeRatesService1 = new StoreRatesServiceImpl();
+    Session mockSession = Mockito.mock(Session.class);
 
-    Rates rates = new Rates();
-    rates.set("dummeyKey", "dummeyValue"); // ✅ valid value
-    productRates.setRates(Collections.singletonList(rates)); // ✅ not null
+    Mockito.doThrow(new RepositoryException("Simulated RepositoryException")).when(mockSession).save();
+    Mockito.when(resourceResolvers.getResourceResolver(SubService.WRITE_CONTENT)).thenReturn(resourceResolver);
+    Mockito.when(resourceResolver.adaptTo(Session.class)).thenReturn(mockSession);
 
-    data.setProductRates(Collections.singletonList(productRates));
-    storeRatesRequest.setData(data);
-    return storeRatesRequest;
+    storeRatesService1.storeRates(request, resourceResolvers);
 }
+
 
 @Test
 public void test_storeRates_save_repositoryException() throws Exception {
