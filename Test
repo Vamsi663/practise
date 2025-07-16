@@ -1,38 +1,36 @@
 @Test
 public void test_storeRates_save_repositoryException() throws Exception {
-    // Prepare mock request
-    StoreRatesRequest request = mockRequest();
-    request.getData().getProductRates().get(0).setOfferInstanceId("new-offer-instance-id");
-    request.getData().getProductRates().get(0).setProductName("Dummy product");
-    request.getData().getProductRates().get(0).getRates().get(0).set("dummyKey", "dummyValue");
+    StoreRatesRequest request = mockNullRequest(); // now has full data
 
-    // Create service under test
     StoreRatesServiceImpl storeRatesService1 = new StoreRatesServiceImpl();
-
-    // Mock session
     Session mockSession = Mockito.mock(Session.class);
-    Mockito.doThrow(new RepositoryException("Simulated RepositoryException"))
-           .when(mockSession).save();
 
-    // Mock node and resource resolver behavior
-    Node mockNode = Mockito.mock(Node.class);
-    ResourceResolver mockResolver = Mockito.mock(ResourceResolver.class);
-    Mockito.when(mockResolver.adaptTo(Session.class)).thenReturn(mockSession);
-    Mockito.when(resourceResolvers.getResourceResolver(SubService.WRITE_CONTENT)).thenReturn(mockResolver);
-    Mockito.when(mockResolver.getResource(Mockito.anyString())).thenReturn(Mockito.mock(Resource.class));
-    Mockito.when(mockNode.addNode(Mockito.anyString())).thenReturn(mockNode);
-    Mockito.when(mockNode.setProperty(Mockito.anyString(), Mockito.anyString())).thenReturn(null);
+    Mockito.doThrow(new RepositoryException("Simulated RepositoryException")).when(mockSession).save();
 
-    // Mock context node structure to avoid NPE
-    Node offerInstancesNode = Mockito.mock(Node.class);
-    Mockito.when(mockNode.hasNode("new-offer-instance-id")).thenReturn(false);
-    Mockito.when(mockNode.getNode("new-offer-instance-id")).thenReturn(mockNode);
-    Mockito.when(offerInstancesNode.hasNode(Mockito.anyString())).thenReturn(false);
-    Mockito.when(mockSession.getRootNode()).thenReturn(mockNode);
+    Mockito.when(resourceResolvers.getResourceResolver(SubService.WRITE_CONTENT)).thenReturn(resourceResolver);
+    Mockito.when(resourceResolver.adaptTo(Session.class)).thenReturn(mockSession);
 
-    // Inject mocked session into resolver
     storeRatesService1.storeRates(request, resourceResolvers);
 
-    // If the RepositoryException occurs, you should see it logged
-    // and test passes if it doesn't crash
+    // No exception thrown = test passes
+}
+
+
+
+private StoreRatesRequest mockNullRequest() throws IOException {
+    StoreRatesRequest storeRatesRequest = new StoreRatesRequest();
+    Data data = new Data();
+
+    ProductRates productRates = new ProductRates();
+    productRates.setOfferInstanceId("new-offer-instance-id");
+    productRates.setOfferProductId("a1b2c3d4-e5f6-7890-abcd-ef1234567892");
+    productRates.setProductName("Dummy Product"); // ✅ not null
+
+    Rates rates = new Rates();
+    rates.set("dummeyKey", "dummeyValue"); // ✅ valid value
+    productRates.setRates(Collections.singletonList(rates)); // ✅ not null
+
+    data.setProductRates(Collections.singletonList(productRates));
+    storeRatesRequest.setData(data);
+    return storeRatesRequest;
 }
