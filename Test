@@ -1,56 +1,38 @@
 @Test
-public void test_storeRates_save() throws Exception {
-    // Arrange
+public void test_storeRates_save_repositoryException() throws Exception {
+    // Prepare mock request
     StoreRatesRequest request = mockRequest();
     request.getData().getProductRates().get(0).setOfferInstanceId("new-offer-instance-id");
     request.getData().getProductRates().get(0).setProductName("Dummy product");
+    request.getData().getProductRates().get(0).getRates().get(0).set("dummyKey", "dummyValue");
 
-    Rates rates = new Rates();
-    rates.set("dummyKey", "dummyValue");
-    request.getData().getProductRates().get(0).setRates(Collections.singletonList(rates));
+    // Create service under test
+    StoreRatesServiceImpl storeRatesService1 = new StoreRatesServiceImpl();
 
-    StoreRatesServiceImpl storeRatesService = new StoreRatesServiceImpl();
-
+    // Mock session
     Session mockSession = Mockito.mock(Session.class);
-    Node mockRootNode = Mockito.mock(Node.class);
-    Node mockOfferInstanceNode = Mockito.mock(Node.class);
-    Node mockRatesNode = Mockito.mock(Node.class);
-    Node mockItemNode = Mockito.mock(Node.class);
-
-    // Mock session -> root node
-    Mockito.when(mockSession.getRootNode()).thenReturn(mockRootNode);
-
-    // Mock root node -> offerInstances -> offerInstanceNode
-    Mockito.when(mockRootNode.hasNode("content/bcuspublic/data/deposits/offerinstances"))
-           .thenReturn(true);
-    Mockito.when(mockRootNode.getNode("content/bcuspublic/data/deposits/offerinstances"))
-           .thenReturn(mockOfferInstanceNode);
-
-    Mockito.when(mockOfferInstanceNode.hasNode("new-offer-instance-id"))
-           .thenReturn(false);
-    Mockito.when(mockOfferInstanceNode.addNode("new-offer-instance-id"))
-           .thenReturn(mockOfferInstanceNode);
-
-    Mockito.when(mockOfferInstanceNode.hasNode("rates"))
-           .thenReturn(false);
-    Mockito.when(mockOfferInstanceNode.addNode("rates"))
-           .thenReturn(mockRatesNode);
-
-    Mockito.when(mockRatesNode.addNode("item0")).thenReturn(mockItemNode);
-
-    // Make session.save() throw exception
     Mockito.doThrow(new RepositoryException("Simulated RepositoryException"))
            .when(mockSession).save();
 
-    // Mock resource resolver + session
-    Mockito.when(resourceResolvers.getResourceResolver(SubService.WRITE_CONTENT))
-           .thenReturn(resourceResolver);
-    Mockito.when(resourceResolver.adaptTo(Session.class))
-           .thenReturn(mockSession);
+    // Mock node and resource resolver behavior
+    Node mockNode = Mockito.mock(Node.class);
+    ResourceResolver mockResolver = Mockito.mock(ResourceResolver.class);
+    Mockito.when(mockResolver.adaptTo(Session.class)).thenReturn(mockSession);
+    Mockito.when(resourceResolvers.getResourceResolver(SubService.WRITE_CONTENT)).thenReturn(mockResolver);
+    Mockito.when(mockResolver.getResource(Mockito.anyString())).thenReturn(Mockito.mock(Resource.class));
+    Mockito.when(mockNode.addNode(Mockito.anyString())).thenReturn(mockNode);
+    Mockito.when(mockNode.setProperty(Mockito.anyString(), Mockito.anyString())).thenReturn(null);
 
-    // Act
-    storeRatesService.storeRates(request, resourceResolvers);
+    // Mock context node structure to avoid NPE
+    Node offerInstancesNode = Mockito.mock(Node.class);
+    Mockito.when(mockNode.hasNode("new-offer-instance-id")).thenReturn(false);
+    Mockito.when(mockNode.getNode("new-offer-instance-id")).thenReturn(mockNode);
+    Mockito.when(offerInstancesNode.hasNode(Mockito.anyString())).thenReturn(false);
+    Mockito.when(mockSession.getRootNode()).thenReturn(mockNode);
 
-    // Assert
-    // No need to assert, this test is only to reach RepositoryException branch
+    // Inject mocked session into resolver
+    storeRatesService1.storeRates(request, resourceResolvers);
+
+    // If the RepositoryException occurs, you should see it logged
+    // and test passes if it doesn't crash
 }
