@@ -1,11 +1,11 @@
-@Test
-public void test_storeRates_save_repositoryException() throws Exception {
-    // Create the request manually to ensure non-null data
+@Test(expected = RepositoryException.class)
+public void testStoreRates_repositoryException() throws Exception {
     StoreRatesRequest request = new StoreRatesRequest();
+
     Data data = new Data();
     ProductRates productRates = new ProductRates();
     productRates.setOfferInstanceId("new-offer-instance-id");
-    productRates.setOfferProductId("a1b2c3d4-e5f6-7890-abcd-ef1234567892");
+    productRates.setOfferProductId("dummy-offer-id");
     productRates.setProductName("Dummy Product");
 
     Rates rates = new Rates();
@@ -13,17 +13,15 @@ public void test_storeRates_save_repositoryException() throws Exception {
 
     productRates.setRates(Collections.singletonList(rates));
     data.setProductRates(Collections.singletonList(productRates));
-    request.setData(data);  // ✅ This was missing
+    request.setData(data);
 
-    // Create service instance
-    StoreRatesServiceImpl storeRatesService1 = new StoreRatesServiceImpl();
+    StoreRatesServiceImpl storeRatesService = new StoreRatesServiceImpl();
 
-    // Mock session & repository exception
     Session mockSession = Mockito.mock(Session.class);
-    Mockito.doThrow(new RepositoryException("Simulated RepositoryException")).when(mockSession).save();
+    Mockito.doThrow(new RepositoryException("Simulated Exception")).when(mockSession).save();
     Mockito.when(resourceResolvers.getResourceResolver(SubService.WRITE_CONTENT)).thenReturn(resourceResolver);
     Mockito.when(resourceResolver.adaptTo(Session.class)).thenReturn(mockSession);
 
-    // This should not crash, only log the error
-    storeRatesService1.storeRates(request, resourceResolvers);
+    // 💥 This line should throw RepositoryException
+    storeRatesService.storeRates(request, resourceResolvers);
 }
