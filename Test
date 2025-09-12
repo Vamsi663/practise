@@ -1,27 +1,7 @@
-@Test(expected = RepositoryException.class)
-public void testStoreRates_repositoryException() throws Exception {
-    StoreRatesRequest request = new StoreRatesRequest();
-
-    Data data = new Data();
-    ProductRates productRates = new ProductRates();
-    productRates.setOfferInstanceId("new-offer-instance-id");
-    productRates.setOfferProductId("dummy-offer-id");
-    productRates.setProductName("Dummy Product");
-
-    Rates rates = new Rates();
-    rates.set("dummyKey", "dummyValue");
-
-    productRates.setRates(Collections.singletonList(rates));
-    data.setProductRates(Collections.singletonList(productRates));
-    request.setData(data);
-
-    StoreRatesServiceImpl storeRatesService = new StoreRatesServiceImpl();
-
-    Session mockSession = Mockito.mock(Session.class);
-    Mockito.doThrow(new RepositoryException("Simulated Exception")).when(mockSession).save();
-    Mockito.when(resourceResolvers.getResourceResolver(SubService.WRITE_CONTENT)).thenReturn(resourceResolver);
-    Mockito.when(resourceResolver.adaptTo(Session.class)).thenReturn(mockSession);
-
-    // 💥 This line should throw RepositoryException
-    storeRatesService.storeRates(request, resourceResolvers);
-}
+<p>view = ${m.view ?: 'NULL'}</p>
+<p>gridIcon = ${m.gridIcon ?: 'NULL'}</p>
+<p>gridIcon.activeToggleIcon = ${m.gridIcon.activeToggleIcon ?: 'NULL'}</p>
+<p>listIcon = ${m.listIcon ?: 'NULL'}</p>
+<p>listIcon.activeToggleIcon = ${m.listIcon.activeToggleIcon ?: 'NULL'}</p>
+<p>toggleIconAltText = ${m.gridIcon.toggleIconAltText ?: 'NULL'}</p>
+<p>cards size = ${m.cards ? m.cards.size : 'NULL'}</p>
