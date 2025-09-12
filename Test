@@ -5,3 +5,24 @@
 <p>listIcon.activeToggleIcon = ${m.listIcon.activeToggleIcon ?: 'NULL'}</p>
 <p>toggleIconAltText = ${m.gridIcon.toggleIconAltText ?: 'NULL'}</p>
 <p>cards size = ${m.cards ? m.cards.size : 'NULL'}</p>
+
+
+
+<sly data-sly-use.cardresults="${'com.bcuspublic.wcm.components.cardresults.CardResults' @ request=request}" />
+
+<p>view = ${cardresults.view ? cardresults.view : 'NULL'}</p>
+
+<p>gridIcon = ${cardresults.gridIcon ? cardresults.gridIcon : 'NULL'}</p>
+<p>gridIcon.activeToggleIcon =
+  ${cardresults.gridIcon && cardresults.gridIcon.activeToggleIcon
+    ? cardresults.gridIcon.activeToggleIcon : 'NULL'}</p>
+<p>gridIcon.toggleIconAltText =
+  ${cardresults.gridIcon && cardresults.gridIcon.toggleIconAltText
+    ? cardresults.gridIcon.toggleIconAltText : 'NULL'}</p>
+
+<p>listIcon = ${cardresults.listIcon ? cardresults.listIcon : 'NULL'}</p>
+<p>listIcon.activeToggleIcon =
+  ${cardresults.listIcon && cardresults.listIcon.activeToggleIcon
+    ? cardresults.listIcon.activeToggleIcon : 'NULL'}</p>
+
+<p>cards size = ${cardresults.cards ? cardresults.cards.size : 'NULL'}</p>
