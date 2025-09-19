@@ -26,3 +26,15 @@
     ? cardresults.listIcon.activeToggleIcon : 'NULL'}</p>
 
 <p>cards size = ${cardresults.cards ? cardresults.cards.size : 'NULL'}</p>
+
+
+
+
+/bin/querybuilder.json?
+path=/content
+type=cq:PageContent
+1_property=sling:resourceType
+1_property.value=bcuspublic/components/page-templates/base-editable-page
+p.hits=selective
+p.properties=jcr:path,jcr:title,cq:template
+p.limit=-1
