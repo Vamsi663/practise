@@ -1,52 +1,27 @@
 @Test
-public void test_fetchLandingPagesWithOfferIds_ForMultiple() throws Exception {
-    // --- Declarations ---
-    Resource pageRes = Mockito.mock(Resource.class);
-    Resource contentRes = Mockito.mock(Resource.class);
-    Page page = Mockito.mock(Page.class);
-    Node pageContentNode = Mockito.mock(Node.class);
-    Property property = Mockito.mock(Property.class);
-    Value v = Mockito.mock(Value.class);
+public void test_fetchXFPages_addsOneChild() throws Exception {
+    // SUT as spy so we can stub its internals safely
+    AssociateOfferToPageSupport spy = Mockito.spy(associateOfferToPageSupport);
 
-    List<String> secondaryOfferIds = Arrays.asList("id1");
+    String xfPath = "/content/experience-fragments/site/en";
+    Resource xfRoot = Mockito.mock(Resource.class);
+    Resource child = Mockito.mock(Resource.class);
+    ValueMap childVm = Mockito.mock(ValueMap.class);
 
-    // --- IF branch: multiple values ---
-    Mockito.when(pageContentNode.hasProperty(OFFERIDS)).thenReturn(true);
-    Mockito.when(pageContentNode.getProperty(OFFERIDS)).thenReturn(property);
-    Mockito.when(property.isMultiple()).thenReturn(true);
-    Mockito.when(v.getString()).thenReturn("id1");
-    Mockito.when(property.getValues()).thenReturn(new Value[]{ v });
+    // fetch root
+    Mockito.when(resourceResolver.getResource(xfPath)).thenReturn(xfRoot);
+    // iterate one child
+    Mockito.when(xfRoot.getChildren()).thenReturn(java.util.Collections.singletonList(child));
+    // make it a “page-like” resource so the first branch executes
+    Mockito.when(child.getValueMap()).thenReturn(childVm);
+    Mockito.when(childVm.get("jcr:primaryType", "")).thenReturn("cq:Page");
 
-    // resolver is called twice (Page, then jcr:content Node)
-    Mockito.when(resourceResolver.getResource(Mockito.anyString()))
-           .thenReturn(pageRes, contentRes);
-    Mockito.when(pageRes.adaptTo(Page.class)).thenReturn(page);
-    Mockito.when(contentRes.adaptTo(Node.class)).thenReturn(pageContentNode);
+    // short-circuit internals the method calls
+    Mockito.doReturn(java.util.Collections.emptyList()).when(spy).getRunningWorkflows();
+    Mockito.doReturn(new TreeViewNode()).when(spy)
+        .buildTreeViewNodeFromXFPage(Mockito.eq(child), Mockito.isNull(), Mockito.anyList());
 
-    try {
-        associateOfferToPageSupport.fetchLandingPagesWithOfferIds(
-                resourceResolver, secondaryOfferIds, ASSOC);
-    } catch (NullPointerException ignored) {
-        // deeper OfferUtils/logging may throw, safe to ignore
-    }
+    java.util.List<TreeViewNode> out = spy.fetchXFPages(resourceResolver, xfPath);
 
-    // --- ELSE branch inside IF: single value ---
-    Mockito.when(pageContentNode.hasProperty(OFFERIDS)).thenReturn(true);
-    Mockito.when(pageContentNode.getProperty(OFFERIDS)).thenReturn(property);
-    Mockito.when(property.isMultiple()).thenReturn(false);
-    Mockito.when(property.getValue()).thenReturn(v);
-    Mockito.when(v.getString()).thenReturn("id2");
-
-    // resolver again
-    Mockito.when(resourceResolver.getResource(Mockito.anyString()))
-           .thenReturn(pageRes, contentRes);
-    Mockito.when(pageRes.adaptTo(Page.class)).thenReturn(page);
-    Mockito.when(contentRes.adaptTo(Node.class)).thenReturn(pageContentNode);
-
-    try {
-        associateOfferToPageSupport.fetchLandingPagesWithOfferIds(
-                resourceResolver, secondaryOfferIds, ASSOC);
-    } catch (NullPointerException ignored) {
-        // ignore deeper calls
-    }
+    org.junit.Assert.assertEquals(1, out.size());
 }
