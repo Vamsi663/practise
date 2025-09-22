@@ -2,7 +2,6 @@
 public void test_fetchLandingPagesWithOfferIds_NoOfferIds() throws Exception {
     List<String> secondaryOfferIds = Arrays.asList("someId");
 
-    // Page → Node without OFFERIDS property
     Page page = Mockito.mock(Page.class);
     Resource resource = Mockito.mock(Resource.class);
     Node node = Mockito.mock(Node.class);
@@ -12,13 +11,18 @@ public void test_fetchLandingPagesWithOfferIds_NoOfferIds() throws Exception {
     when(page.getPath()).thenReturn("/content/testPage");
     when(node.hasProperty("OFFERIDS")).thenReturn(false);
 
-    // Spy so we don’t go into buildNode deeply
-    AssociateOfferToPageSupport spy = Mockito.spy(associateOfferToPageSupportUnderTest);
-    doReturn(new TreeViewNode()).when(spy).buildNode(any(), anyBoolean(), anyBoolean(),
-                                                     anyString(), anyString());
+    // Mock static calls inside OfferUtils
+    try (MockedStatic<OfferUtils> offerUtils = Mockito.mockStatic(OfferUtils.class)) {
+        offerUtils.when(() -> OfferUtils.isStoreFrontPage(any())).thenReturn(false);
+        offerUtils.when(() ->
+            OfferUtils.getSecondaryOfferIdsFromDialogUIStructure(any(), anyString()))
+            .thenReturn(Collections.emptySet());
 
-    List<TreeViewNode> result =
-        spy.fetchLandingPagesWithOfferIds(resourceResolver, secondaryOfferIds, "SECONDARY");
+        AssociateOfferToPageSupport spy = Mockito.spy(associateOfferToPageSupportUnderTest);
 
-    assertFalse(result.isEmpty());  // ensures else branch was executed
+        List<TreeViewNode> result =
+            spy.fetchLandingPagesWithOfferIds(resourceResolver, secondaryOfferIds, "SECONDARY");
+
+        assertFalse(result.isEmpty()); // ensures else branch executed
+    }
 }
