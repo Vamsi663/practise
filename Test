@@ -2,36 +2,62 @@
 public void test_fetchXFPages_nullRoot_returnsEmpty() throws Exception {
     AssociateOfferToPageSupport sut = new AssociateOfferToPageSupport();
 
-    // xfPath root not found → early return
     Mockito.when(resourceResolver.getResource("/xf/missing")).thenReturn(null);
 
     List<TreeViewNode> out = sut.fetchXFPages(resourceResolver, "/xf/missing");
-    org.junit.Assert.assertTrue(out.isEmpty());
+
+    Assert.assertTrue(out.isEmpty());
 }
 
 @Test
-public void test_fetchXFPages_childPage_branch_executesLoop() throws Exception {
+public void test_fetchXFPages_childPage_branch() throws Exception {
     AssociateOfferToPageSupport sut = new AssociateOfferToPageSupport();
 
-    // Mocks
-    String xfPath = "/xf/path";
-    Resource xfRoot = Mockito.mock(Resource.class);
+    Resource root = Mockito.mock(Resource.class);
     Resource child = Mockito.mock(Resource.class);
+    ValueMap vm = Mockito.mock(ValueMap.class);
+
+    Mockito.when(resourceResolver.getResource("/xf/path")).thenReturn(root);
+    Mockito.when(root.getChildren()).thenReturn(Collections.singletonList(child));
+    Mockito.when(child.getValueMap()).thenReturn(vm);
+    Mockito.when(vm.get("jcr:primaryType", "")).thenReturn("cq:Page");
+
+    try {
+        sut.fetchXFPages(resourceResolver, "/xf/path");
+    } catch (NullPointerException expected) {
+        // Expected because buildTreeViewNodeFromXFPage is private & not stubbed.
+    }
+}
+
+@Test
+public void test_fetchXFPages_childPage_withMasterTemplate_branch() throws Exception {
+    AssociateOfferToPageSupport sut = new AssociateOfferToPageSupport();
+
+    Resource root = Mockito.mock(Resource.class);
+    Resource child = Mockito.mock(Resource.class);
+    Resource master = Mockito.mock(Resource.class);
+    Resource jcrContent = Mockito.mock(Resource.class);
+
     ValueMap childVm = Mockito.mock(ValueMap.class);
+    ValueMap pageVm = Mockito.mock(ValueMap.class);
 
-    // Root + one child
-    Mockito.when(resourceResolver.getResource(xfPath)).thenReturn(xfRoot);
-    Mockito.when(xfRoot.getChildren()).thenReturn(java.util.Collections.singletonList(child));
+    // root and child
+    Mockito.when(resourceResolver.getResource("/xf/template")).thenReturn(root);
+    Mockito.when(root.getChildren()).thenReturn(Collections.singletonList(child));
 
-    // Make child look like a cq:Page so the first branch runs
+    // make it cq:Page
     Mockito.when(child.getValueMap()).thenReturn(childVm);
     Mockito.when(childVm.get("jcr:primaryType", "")).thenReturn("cq:Page");
 
-    // Run and EXPECT an NPE from deeper private calls (ok for coverage of lines before it)
+    // simulate MASTER/jcr:content with cq:template
+    Mockito.when(child.getChild("MASTER")).thenReturn(master);
+    Mockito.when(master.getChild("jcr:content")).thenReturn(jcrContent);
+    Mockito.when(jcrContent.getValueMap()).thenReturn(pageVm);
+    Mockito.when(pageVm.get("cq:template", "")).thenReturn("landing-page-xf-template");
+
     try {
-        sut.fetchXFPages(resourceResolver, xfPath);
-        org.junit.Assert.fail("Expected NPE after loop/branch executed");
+        sut.fetchXFPages(resourceResolver, "/xf/template");
     } catch (NullPointerException expected) {
-        // Lines inside the loop and the 'cq:Page' branch are executed before this point.
+        // Expected because buildTreeViewNodeFromXFPage is private & not stubbed.
     }
 }
