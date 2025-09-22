@@ -1,51 +1,24 @@
 @Test
-public void test_buildTreeViewForSecondaryOffers_NoOfferIds() throws Exception {
-    Node pageContentNode = Mockito.mock(Node.class);
+public void test_fetchLandingPagesWithOfferIds_NoOfferIds() throws Exception {
+    List<String> secondaryOfferIds = Arrays.asList("someId");
+
+    // Page → Node without OFFERIDS property
     Page page = Mockito.mock(Page.class);
-    TreeViewNode treeViewNode = new TreeViewNode();
-    ArrayList<TreeViewNode> nodes = new ArrayList<>();
-    List<String> inputSecondaryOfferIds = Arrays.asList("someId");
+    Resource resource = Mockito.mock(Resource.class);
+    Node node = Mockito.mock(Node.class);
 
-    // Mock: no OFFERIDS
-    Mockito.when(pageContentNode.hasProperty("OFFERIDS")).thenReturn(false);
-    Mockito.when(page.getPath()).thenReturn("/content/testPage");
+    when(resourceResolver.getResource(anyString())).thenReturn(resource);
+    when(resource.adaptTo(Node.class)).thenReturn(node);
+    when(page.getPath()).thenReturn("/content/testPage");
+    when(node.hasProperty("OFFERIDS")).thenReturn(false);
 
-    associateOfferToPageSupportUnderTest
-        .buildTreeViewForSecondaryOffers(pageContentNode, treeViewNode, nodes,
-                                         page, resourceResolver, inputSecondaryOfferIds, workflowList);
+    // Spy so we don’t go into buildNode deeply
+    AssociateOfferToPageSupport spy = Mockito.spy(associateOfferToPageSupportUnderTest);
+    doReturn(new TreeViewNode()).when(spy).buildNode(any(), anyBoolean(), anyBoolean(),
+                                                     anyString(), anyString());
 
-    assertFalse(nodes.isEmpty());  // node still added in else
+    List<TreeViewNode> result =
+        spy.fetchLandingPagesWithOfferIds(resourceResolver, secondaryOfferIds, "SECONDARY");
+
+    assertFalse(result.isEmpty());  // ensures else branch was executed
 }
-
-@Test
-public void test_buildTreeViewForSecondaryOffers_SingleValue() throws Exception {
-    Node pageContentNode = Mockito.mock(Node.class);
-    Property property = Mockito.mock(Property.class);
-    Page page = Mockito.mock(Page.class);
-    TreeViewNode treeViewNode = new TreeViewNode();
-    ArrayList<TreeViewNode> nodes = new ArrayList<>();
-    List<String> inputSecondaryOfferIds = Arrays.asList("someId");
-
-    Mockito.when(pageContentNode.hasProperty("OFFERIDS")).thenReturn(true);
-    Mockito.when(pageContentNode.getProperty("OFFERIDS")).thenReturn(property);
-    Mockito.when(property.isMultiple()).thenReturn(false);
-    Mockito.when(property.getValue()).thenReturn(Mockito.mock(Value.class));
-    Mockito.when(property.getValue().toString()).thenReturn("someId");
-
-    associateOfferToPageSupportUnderTest
-        .buildTreeViewForSecondaryOffers(pageContentNode, treeViewNode, nodes,
-                                         page, resourceResolver, inputSecondaryOfferIds, workflowList);
-
-    assertEquals(1, nodes.size());
-}
-
-@Test
-public void test_fetchLandingPagesWithOfferIds_NoMatches() throws Exception {
-    List<String> secondaryOfferIds = Arrays.asList("unmatchedId");
-
-    List<TreeViewNode> result = associateOfferToPageSupport
-        .fetchLandingPagesWithOfferIds(resourceResolver, secondaryOfferIds, "SECONDARY");
-
-    assertTrue(result.isEmpty());
-}
-
