@@ -1,30 +1,36 @@
-@Test
-public void test_fetchLandingPagesWithOfferIds_NoOfferIds_returnsNode() throws Exception {
-    List<String> secondaryOfferIds = java.util.Arrays.asList("someId");
+// at the top of the test, before execute
+Resource pageRes = Mockito.mock(Resource.class);
+Resource contentRes = Mockito.mock(Resource.class);
+Page page = Mockito.mock(Page.class);
+Node pageContentNode = Mockito.mock(Node.class);
 
-    Page page = Mockito.mock(Page.class);
-    Resource pageRes = Mockito.mock(Resource.class);
-    Resource contentRes = Mockito.mock(Resource.class);
-    Node node = Mockito.mock(Node.class);
+Mockito.when(resourceResolver.getResource(Mockito.anyString()))
+       .thenReturn(pageRes, contentRes);         // first for Page, second for Node
+Mockito.when(pageRes.adaptTo(Page.class)).thenReturn(page);
+Mockito.when(contentRes.adaptTo(Node.class)).thenReturn(pageContentNode);
+Mockito.when(page.getPath()).thenReturn(CONTENT_PATH);
 
-    // Resolver calls: first to CONTENT_PATH → Page, then pagePath + "/jcr:content" → Node
-    Mockito.when(resourceResolver.getResource(Mockito.anyString()))
-           .thenReturn(pageRes, contentRes);
-    Mockito.when(pageRes.adaptTo(Page.class)).thenReturn(page);
-    Mockito.when(contentRes.adaptTo(Node.class)).thenReturn(node);
+// use the correct association type
+final String ASSOC = "SECONDARY_INC_ASSOCIATE";
 
-    Mockito.when(page.getPath()).thenReturn("/content/test");
+// --- First call: cover IF branch (empty multiple values)
+Property offerProp = Mockito.mock(Property.class);
+Mockito.when(pageContentNode.hasProperty(OFFERIDS)).thenReturn(true);
+Mockito.when(pageContentNode.getProperty(OFFERIDS)).thenReturn(offerProp);
+Mockito.when(offerProp.isMultiple()).thenReturn(true);
+Mockito.when(offerProp.getValues()).thenReturn(new javax.jcr.Value[]{}); // empty → skip loop
+Mockito.when(page.listChildren(Mockito.any(com.day.cq.wcm.api.PageFilter.class)))
+       .thenReturn(null);
 
-    // Force ELSE branch
-    Mockito.when(node.hasProperty("OFFERIDS")).thenReturn(false);
+List<TreeViewNode> list1 =
+    associateOfferToPageSupport.fetchLandingPagesWithOfferIds(resourceResolver, secondaryOfferIds, ASSOC);
+assertFalse(list1.isEmpty());
 
-    // Don’t traverse children
-    Mockito.when(page.listChildren(Mockito.any(com.day.cq.wcm.api.PageFilter.class)))
-           .thenReturn(null);
+// --- Second call: cover ELSE branch (no OFFERIDS)
+Mockito.when(pageContentNode.hasProperty(OFFERIDS)).thenReturn(false);
+Mockito.when(resourceResolver.getResource(Mockito.anyString()))
+       .thenReturn(pageRes, contentRes);
 
-    List<TreeViewNode> result =
-        associateOfferToPageSupport.fetchLandingPagesWithOfferIds(
-            resourceResolver, secondaryOfferIds, "SECONDARY_INC_ASSOCIATE");
-
-    org.junit.Assert.assertFalse(result.isEmpty());
-}
+List<TreeViewNode> list2 =
+    associateOfferToPageSupport.fetchLandingPagesWithOfferIds(resourceResolver, secondaryOfferIds, ASSOC);
+assertFalse(list2.isEmpty());
