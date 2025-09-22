@@ -1,17 +1,37 @@
-@Test(expected = NullPointerException.class)
-public void test_fetchLandingPagesWithOfferIds_NoOfferIds_expectNPE() throws Exception {
+@Test
+public void test_fetchLandingPagesWithOfferIds_NoOfferIds_returnsNode() throws Exception {
+    // Inputs
     List<String> secondaryOfferIds = java.util.Arrays.asList("someId");
 
+    // Mocks used by the code path
     Page page = Mockito.mock(Page.class);
-    Resource resource = Mockito.mock(Resource.class);
+    Resource pageResource = Mockito.mock(Resource.class);        // for CONTENT_PATH → Page
+    Resource contentResource = Mockito.mock(Resource.class);     // for page + "/jcr:content" → Node
     Node node = Mockito.mock(Node.class);
 
-    Mockito.when(resourceResolver.getResource(Mockito.anyString())).thenReturn(resource);
-    Mockito.when(resource.adaptTo(Node.class)).thenReturn(node);
+    // 1) This is CRUCIAL: the public method fetches the Page from the resolver.
+    // First call (CONTENT_PATH) → pageResource → adaptTo(Page) = page
+    // Second call (pagePath + /jcr:content) → contentResource → adaptTo(Node) = node
+    Mockito.when(resourceResolver.getResource(Mockito.anyString()))
+           .thenReturn(pageResource, contentResource);
+    Mockito.when(pageResource.adaptTo(Page.class)).thenReturn(page);
+    Mockito.when(contentResource.adaptTo(Node.class)).thenReturn(node);
+
+    // Page path used to build the jcr:content call
     Mockito.when(page.getPath()).thenReturn("/content/test");
+
+    // 2) Force ELSE branch: no OFFERIDS on pageContentNode
     Mockito.when(node.hasProperty("OFFERIDS")).thenReturn(false);
 
-    // Call public entry. We *expect* an NPE deeper (e.g., getOfferJsonObject/logPageData)
-    associateOfferToPageSupportUnderTest
-        .fetchLandingPagesWithOfferIds(resourceResolver, secondaryOfferIds, "SECONDARY");
+    // 3) Prevent deeper traversal: listChildren returns null or an iterator with hasNext=false
+    Mockito.when(page.listChildren(Mockito.any(com.day.cq.wcm.commons.PageFilter.class)))
+           .thenReturn(null);
+
+    // Execute
+    java.util.List<TreeViewNode> result =
+        associateOfferToPageSupport.fetchLandingPagesWithOfferIds(
+            resourceResolver, secondaryOfferIds, "SECONDARY");
+
+    // Assert: we added one node via the ELSE branch
+    org.junit.Assert.assertFalse(result.isEmpty());
 }
