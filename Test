@@ -1,18 +1,16 @@
-// ---- 1) Null-root path: covers early return (xfPathRoot == null) ----
+// 1) Null-root quick guard (xfPath not found) — covers the early return
 @Test
 public void test_fetchXFPages_nullRoot_returnsEmpty() throws Exception {
-    // use your existing instance; or: AssociateOfferToPageSupport sut = new AssociateOfferToPageSupport();
-    AssociateOfferToPageSupport sut = associateOfferToPageSupport;
-
+    AssociateOfferToPageSupport sut = associateOfferToPageSupport; // or new AssociateOfferToPageSupport()
     Mockito.when(resourceResolver.getResource("/xf/missing")).thenReturn(null);
 
-    List<TreeViewNode> out = sut.fetchXFPages(resourceResolver, "/xf/missing");
+    java.util.List<TreeViewNode> out = sut.fetchXFPages(resourceResolver, "/xf/missing");
     org.junit.Assert.assertTrue(out.isEmpty());
 }
 
-// ---- 2) First branch: child treated as folder (sling:OrderedFolder / nt:folder) ----
+// 2) Folder branch: valueMap.get("jcr:primaryType") -> "sling:OrderedFolder"
 @Test
-public void test_fetchXFPages_child_isFolderBranch() throws Exception {
+public void test_fetchXFPages_folderBranch() throws Exception {
     AssociateOfferToPageSupport sut = associateOfferToPageSupport;
 
     Resource xfRoot = Mockito.mock(Resource.class);
@@ -23,27 +21,26 @@ public void test_fetchXFPages_child_isFolderBranch() throws Exception {
     Mockito.when(xfRoot.getChildren()).thenReturn(java.util.Collections.singletonList(child));
     Mockito.when(child.getValueMap()).thenReturn(vm);
 
-    // Make first IF true: valueMap.get("jcr:primaryType").toString().equalsIgnoreCase("sling:OrderedFolder")
+    // *** IMPORTANT: the code calls get("jcr:primaryType") (no default) and then .toString()
     Mockito.when(vm.get("jcr:primaryType")).thenReturn("sling:OrderedFolder");
-    // (the method also queries get("jcr:primaryType", ""), but the above is enough to enter this block)
 
     try {
-        List<TreeViewNode> out = sut.fetchXFPages(resourceResolver, "/xf/folder");
-        // If no exception, we at least added one element (could be null depending on private call)
+        java.util.List<TreeViewNode> out = sut.fetchXFPages(resourceResolver, "/xf/folder");
+        // if no private helper explodes, we should have added one item (possibly null)
         org.junit.Assert.assertEquals(1, out.size());
     } catch (NullPointerException expected) {
-        // OK: lines in the branch executed before a private helper threw
+        // ok — lines in the folder branch executed before private helper threw
     }
 }
 
-// ---- 3) Else-if branch: cq:Page + MASTER/jcr:content/cq:template ----
+// 3) Page + MASTER + template branch
 @Test
-public void test_fetchXFPages_child_pageWithMasterTemplateBranch() throws Exception {
+public void test_fetchXFPages_pageWithMasterTemplateBranch() throws Exception {
     AssociateOfferToPageSupport sut = associateOfferToPageSupport;
 
-    Resource xfRoot = Mockito.mock(Resource.class);
-    Resource child  = Mockito.mock(Resource.class);
-    Resource master = Mockito.mock(Resource.class);
+    Resource xfRoot     = Mockito.mock(Resource.class);
+    Resource child      = Mockito.mock(Resource.class);
+    Resource master     = Mockito.mock(Resource.class);
     Resource jcrContent = Mockito.mock(Resource.class);
 
     org.apache.sling.api.resource.ValueMap childVm = Mockito.mock(org.apache.sling.api.resource.ValueMap.class);
@@ -52,25 +49,26 @@ public void test_fetchXFPages_child_pageWithMasterTemplateBranch() throws Except
     Mockito.when(resourceResolver.getResource("/xf/template")).thenReturn(xfRoot);
     Mockito.when(xfRoot.getChildren()).thenReturn(java.util.Collections.singletonList(child));
 
-    // Ensure first IF (folder) is false; else-if checks cq:Page via get("jcr:primaryType","")
     Mockito.when(child.getValueMap()).thenReturn(childVm);
-    Mockito.when(childVm.get("jcr:primaryType")).thenReturn("something-else"); // so folder IF won’t short-circuit
+
+    // *** IMPORTANT: make the first IF false (so we reach else-if)
+    Mockito.when(childVm.get("jcr:primaryType")).thenReturn("something-else");
+    // else-if checks: "cq:Page".equals(valueMap.get("jcr:primaryType", ""))
     Mockito.when(childVm.get("jcr:primaryType", "")).thenReturn("cq:Page");
 
-    // MASTER/jcr:content with a template value matching the constant in code
+    // MASTER/jcr:content/cq:template chain
     Mockito.when(child.getChild("MASTER")).thenReturn(master);
     Mockito.when(master.getChild("jcr:content")).thenReturn(jcrContent);
     Mockito.when(jcrContent.getValueMap()).thenReturn(pageVm);
 
-    // Use your real constant if public; otherwise keep the literal you compare against
+    // use the exact template string your code compares against
     final String LANDING_PAGE_XF_TEMPLATE = "landing-page-xf-template";
     Mockito.when(pageVm.get("cq:template", "")).thenReturn(LANDING_PAGE_XF_TEMPLATE);
 
     try {
-        List<TreeViewNode> out = sut.fetchXFPages(resourceResolver, "/xf/template");
+        java.util.List<TreeViewNode> out = sut.fetchXFPages(resourceResolver, "/xf/template");
         org.junit.Assert.assertEquals(1, out.size());
     } catch (NullPointerException expected) {
-        // OK: branch lines executed before private helper threw
+        // ok — lines in the page+template branch executed before private helper threw
     }
 }
-
