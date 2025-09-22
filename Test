@@ -1,40 +1,51 @@
-<p>view = ${m.view ?: 'NULL'}</p>
-<p>gridIcon = ${m.gridIcon ?: 'NULL'}</p>
-<p>gridIcon.activeToggleIcon = ${m.gridIcon.activeToggleIcon ?: 'NULL'}</p>
-<p>listIcon = ${m.listIcon ?: 'NULL'}</p>
-<p>listIcon.activeToggleIcon = ${m.listIcon.activeToggleIcon ?: 'NULL'}</p>
-<p>toggleIconAltText = ${m.gridIcon.toggleIconAltText ?: 'NULL'}</p>
-<p>cards size = ${m.cards ? m.cards.size : 'NULL'}</p>
+@Test
+public void test_buildTreeViewForSecondaryOffers_NoOfferIds() throws Exception {
+    Node pageContentNode = Mockito.mock(Node.class);
+    Page page = Mockito.mock(Page.class);
+    TreeViewNode treeViewNode = new TreeViewNode();
+    ArrayList<TreeViewNode> nodes = new ArrayList<>();
+    List<String> inputSecondaryOfferIds = Arrays.asList("someId");
 
+    // Mock: no OFFERIDS
+    Mockito.when(pageContentNode.hasProperty("OFFERIDS")).thenReturn(false);
+    Mockito.when(page.getPath()).thenReturn("/content/testPage");
 
+    associateOfferToPageSupportUnderTest
+        .buildTreeViewForSecondaryOffers(pageContentNode, treeViewNode, nodes,
+                                         page, resourceResolver, inputSecondaryOfferIds, workflowList);
 
-<sly data-sly-use.cardresults="${'com.bcuspublic.wcm.components.cardresults.CardResults' @ request=request}" />
+    assertFalse(nodes.isEmpty());  // node still added in else
+}
 
-<p>view = ${cardresults.view ? cardresults.view : 'NULL'}</p>
+@Test
+public void test_buildTreeViewForSecondaryOffers_SingleValue() throws Exception {
+    Node pageContentNode = Mockito.mock(Node.class);
+    Property property = Mockito.mock(Property.class);
+    Page page = Mockito.mock(Page.class);
+    TreeViewNode treeViewNode = new TreeViewNode();
+    ArrayList<TreeViewNode> nodes = new ArrayList<>();
+    List<String> inputSecondaryOfferIds = Arrays.asList("someId");
 
-<p>gridIcon = ${cardresults.gridIcon ? cardresults.gridIcon : 'NULL'}</p>
-<p>gridIcon.activeToggleIcon =
-  ${cardresults.gridIcon && cardresults.gridIcon.activeToggleIcon
-    ? cardresults.gridIcon.activeToggleIcon : 'NULL'}</p>
-<p>gridIcon.toggleIconAltText =
-  ${cardresults.gridIcon && cardresults.gridIcon.toggleIconAltText
-    ? cardresults.gridIcon.toggleIconAltText : 'NULL'}</p>
+    Mockito.when(pageContentNode.hasProperty("OFFERIDS")).thenReturn(true);
+    Mockito.when(pageContentNode.getProperty("OFFERIDS")).thenReturn(property);
+    Mockito.when(property.isMultiple()).thenReturn(false);
+    Mockito.when(property.getValue()).thenReturn(Mockito.mock(Value.class));
+    Mockito.when(property.getValue().toString()).thenReturn("someId");
 
-<p>listIcon = ${cardresults.listIcon ? cardresults.listIcon : 'NULL'}</p>
-<p>listIcon.activeToggleIcon =
-  ${cardresults.listIcon && cardresults.listIcon.activeToggleIcon
-    ? cardresults.listIcon.activeToggleIcon : 'NULL'}</p>
+    associateOfferToPageSupportUnderTest
+        .buildTreeViewForSecondaryOffers(pageContentNode, treeViewNode, nodes,
+                                         page, resourceResolver, inputSecondaryOfferIds, workflowList);
 
-<p>cards size = ${cardresults.cards ? cardresults.cards.size : 'NULL'}</p>
+    assertEquals(1, nodes.size());
+}
 
+@Test
+public void test_fetchLandingPagesWithOfferIds_NoMatches() throws Exception {
+    List<String> secondaryOfferIds = Arrays.asList("unmatchedId");
 
+    List<TreeViewNode> result = associateOfferToPageSupport
+        .fetchLandingPagesWithOfferIds(resourceResolver, secondaryOfferIds, "SECONDARY");
 
+    assertTrue(result.isEmpty());
+}
 
-/bin/querybuilder.json?
-path=/content
-type=cq:PageContent
-1_property=sling:resourceType
-1_property.value=bcuspublic/components/page-templates/base-editable-page
-p.hits=selective
-p.properties=jcr:path,jcr:title,cq:template
-p.limit=-1
