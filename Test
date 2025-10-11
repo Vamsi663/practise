@@ -1,74 +1,46 @@
-// 1) Null-root quick guard (xfPath not found) — covers the early return
 @Test
-public void test_fetchXFPages_nullRoot_returnsEmpty() throws Exception {
-    AssociateOfferToPageSupport sut = associateOfferToPageSupport; // or new AssociateOfferToPageSupport()
-    Mockito.when(resourceResolver.getResource("/xf/missing")).thenReturn(null);
+public void getContentInfo_folderWithNoDamChildren_putsEmptyList() throws Exception {
+    // Arrange
+    ContentFragmentServlet servlet = new ContentFragmentServlet(); // use your @InjectMocks if you prefer
 
-    java.util.List<TreeViewNode> out = sut.fetchXFPages(resourceResolver, "/xf/missing");
-    org.junit.Assert.assertTrue(out.isEmpty());
-}
+    // fragmentResource: sling:Folder
+    Resource folder = mock(Resource.class);
+    when(folder.getResourceType()).thenReturn("sling:Folder");
+    when(folder.getPath()).thenReturn("/content/bcuspublic/cf-folder");
 
-// 2) Folder branch: valueMap.get("jcr:primaryType") -> "sling:OrderedFolder"
-@Test
-public void test_fetchXFPages_folderBranch() throws Exception {
-    AssociateOfferToPageSupport sut = associateOfferToPageSupport;
+    // children: NOT dam:Asset -> buildFragmentJson() will not be called
+    Resource childA = mock(Resource.class);
+    Resource childB = mock(Resource.class);
 
-    Resource xfRoot = Mockito.mock(Resource.class);
-    Resource child  = Mockito.mock(Resource.class);
-    org.apache.sling.api.resource.ValueMap vm = Mockito.mock(org.apache.sling.api.resource.ValueMap.class);
+    javax.jcr.Node childANode = mock(javax.jcr.Node.class);
+    javax.jcr.Node childBNode = mock(javax.jcr.Node.class);
 
-    Mockito.when(resourceResolver.getResource("/xf/folder")).thenReturn(xfRoot);
-    Mockito.when(xfRoot.getChildren()).thenReturn(java.util.Collections.singletonList(child));
-    Mockito.when(child.getValueMap()).thenReturn(vm);
+    when(childA.adaptTo(javax.jcr.Node.class)).thenReturn(childANode);
+    when(childB.adaptTo(javax.jcr.Node.class)).thenReturn(childBNode);
 
-    // *** IMPORTANT: the code calls get("jcr:primaryType") (no default) and then .toString()
-    Mockito.when(vm.get("jcr:primaryType")).thenReturn("sling:OrderedFolder");
+    when(childANode.isNodeType("dam:Asset")).thenReturn(false);
+    when(childBNode.isNodeType("dam:Asset")).thenReturn(false);
 
-    try {
-        java.util.List<TreeViewNode> out = sut.fetchXFPages(resourceResolver, "/xf/folder");
-        // if no private helper explodes, we should have added one item (possibly null)
-        org.junit.Assert.assertEquals(1, out.size());
-    } catch (NullPointerException expected) {
-        // ok — lines in the folder branch executed before private helper threw
-    }
-}
+    when(folder.getChildren()).thenReturn(java.util.Arrays.asList(childA, childB));
 
-// 3) Page + MASTER + template branch
-@Test
-public void test_fetchXFPages_pageWithMasterTemplateBranch() throws Exception {
-    AssociateOfferToPageSupport sut = associateOfferToPageSupport;
+    // parent json holder
+    java.util.Map<String,Object> parentJson = new java.util.HashMap<>();
 
-    Resource xfRoot     = Mockito.mock(Resource.class);
-    Resource child      = Mockito.mock(Resource.class);
-    Resource master     = Mockito.mock(Resource.class);
-    Resource jcrContent = Mockito.mock(Resource.class);
+    // Act: invoke private method via reflection (no runner changes needed)
+    java.lang.reflect.Method m = ContentFragmentServlet.class.getDeclaredMethod(
+            "getContentInfo",
+            org.apache.sling.api.resource.ResourceResolver.class,
+            org.apache.sling.api.resource.Resource.class,
+            java.util.Map.class,
+            java.lang.String.class
+    );
+    m.setAccessible(true);
+    m.invoke(servlet, resourceResolver, folder, parentJson, "data");
 
-    org.apache.sling.api.resource.ValueMap childVm = Mockito.mock(org.apache.sling.api.resource.ValueMap.class);
-    org.apache.sling.api.resource.ValueMap pageVm  = Mockito.mock(org.apache.sling.api.resource.ValueMap.class);
-
-    Mockito.when(resourceResolver.getResource("/xf/template")).thenReturn(xfRoot);
-    Mockito.when(xfRoot.getChildren()).thenReturn(java.util.Collections.singletonList(child));
-
-    Mockito.when(child.getValueMap()).thenReturn(childVm);
-
-    // *** IMPORTANT: make the first IF false (so we reach else-if)
-    Mockito.when(childVm.get("jcr:primaryType")).thenReturn("something-else");
-    // else-if checks: "cq:Page".equals(valueMap.get("jcr:primaryType", ""))
-    Mockito.when(childVm.get("jcr:primaryType", "")).thenReturn("cq:Page");
-
-    // MASTER/jcr:content/cq:template chain
-    Mockito.when(child.getChild("MASTER")).thenReturn(master);
-    Mockito.when(master.getChild("jcr:content")).thenReturn(jcrContent);
-    Mockito.when(jcrContent.getValueMap()).thenReturn(pageVm);
-
-    // use the exact template string your code compares against
-    final String LANDING_PAGE_XF_TEMPLATE = "landing-page-xf-template";
-    Mockito.when(pageVm.get("cq:template", "")).thenReturn(LANDING_PAGE_XF_TEMPLATE);
-
-    try {
-        java.util.List<TreeViewNode> out = sut.fetchXFPages(resourceResolver, "/xf/template");
-        org.junit.Assert.assertEquals(1, out.size());
-    } catch (NullPointerException expected) {
-        // ok — lines in the page+template branch executed before private helper threw
-    }
+    // Assert: key exists and is an empty List (since no dam:Asset children)
+    org.junit.Assert.assertTrue("parentJson should contain key 'data'", parentJson.containsKey("data"));
+    Object val = parentJson.get("data");
+    org.junit.Assert.assertTrue("value under 'data' must be a List", val instanceof java.util.List);
+    org.junit.Assert.assertTrue("list must be empty when no DAM children",
+            ((java.util.List<?>) val).isEmpty());
 }
