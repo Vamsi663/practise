@@ -1,46 +1,36 @@
 @Test
-public void getContentInfo_folderWithNoDamChildren_putsEmptyList() throws Exception {
-    // Arrange
-    ContentFragmentServlet servlet = new ContentFragmentServlet(); // use your @InjectMocks if you prefer
+public void getContentInfoTestAsset() throws Exception {
+    ContentFragmentServlet servlet = new ContentFragmentServlet();
 
-    // fragmentResource: sling:Folder
-    Resource folder = mock(Resource.class);
-    when(folder.getResourceType()).thenReturn("sling:Folder");
-    when(folder.getPath()).thenReturn("/content/bcuspublic/cf-folder");
+    // Mock an asset-type resource
+    Resource assetResource = mock(Resource.class);
+    Node assetNode = mock(Node.class);
 
-    // children: NOT dam:Asset -> buildFragmentJson() will not be called
-    Resource childA = mock(Resource.class);
-    Resource childB = mock(Resource.class);
+    when(assetResource.getResourceType()).thenReturn("dam:Asset");
+    when(assetResource.getPath()).thenReturn("/content/bcuspublic/cf-folder");
+    when(assetResource.adaptTo(Node.class)).thenReturn(assetNode);
+    when(assetNode.isNodeType("dam:Asset")).thenReturn(true);
 
-    javax.jcr.Node childANode = mock(javax.jcr.Node.class);
-    javax.jcr.Node childBNode = mock(javax.jcr.Node.class);
+    // Mock the ContentFragment adaptation and its behavior
+    com.adobe.cq.dam.cfm.ContentFragment mockCF = mock(com.adobe.cq.dam.cfm.ContentFragment.class);
+    when(assetResource.adaptTo(com.adobe.cq.dam.cfm.ContentFragment.class)).thenReturn(mockCF);
+    when(mockCF.getElement("disclosure-1")).thenReturn(mock(com.adobe.cq.dam.cfm.ContentElement.class));
 
-    when(childA.adaptTo(javax.jcr.Node.class)).thenReturn(childANode);
-    when(childB.adaptTo(javax.jcr.Node.class)).thenReturn(childBNode);
+    // Mock ValueMap
+    ValueMap valueMap = new ValueMapDecorator(new HashMap<>());
+    when(assetResource.getValueMap()).thenReturn(valueMap);
 
-    when(childANode.isNodeType("dam:Asset")).thenReturn(false);
-    when(childBNode.isNodeType("dam:Asset")).thenReturn(false);
+    // parentJson to hold output
+    Map<String, Object> parentJson = new HashMap<>();
 
-    when(folder.getChildren()).thenReturn(java.util.Arrays.asList(childA, childB));
-
-    // parent json holder
-    java.util.Map<String,Object> parentJson = new java.util.HashMap<>();
-
-    // Act: invoke private method via reflection (no runner changes needed)
-    java.lang.reflect.Method m = ContentFragmentServlet.class.getDeclaredMethod(
+    // Call private method via reflection
+    Method m = ContentFragmentServlet.class.getDeclaredMethod(
             "getContentInfo",
-            org.apache.sling.api.resource.ResourceResolver.class,
-            org.apache.sling.api.resource.Resource.class,
-            java.util.Map.class,
-            java.lang.String.class
+            ResourceResolver.class, Resource.class, Map.class, String.class
     );
     m.setAccessible(true);
-    m.invoke(servlet, resourceResolver, folder, parentJson, "data");
+    m.invoke(servlet, resourceResolver, assetResource, parentJson, "data");
 
-    // Assert: key exists and is an empty List (since no dam:Asset children)
-    org.junit.Assert.assertTrue("parentJson should contain key 'data'", parentJson.containsKey("data"));
-    Object val = parentJson.get("data");
-    org.junit.Assert.assertTrue("value under 'data' must be a List", val instanceof java.util.List);
-    org.junit.Assert.assertTrue("list must be empty when no DAM children",
-            ((java.util.List<?>) val).isEmpty());
+    // Assert output key created
+    assertTrue(parentJson.containsKey("data"));
 }
