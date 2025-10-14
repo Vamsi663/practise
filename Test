@@ -1,50 +1,43 @@
 @Test
 public void getContentInfoTestAsset() throws Exception {
-    // SUT
     ContentFragmentServlet servlet = new ContentFragmentServlet();
 
-    // --- Arrange: a dam:Asset resource ---
     Resource asset = mock(Resource.class);
     Node assetNode = mock(Node.class);
+
     when(asset.getResourceType()).thenReturn("dam:Asset");
     when(asset.getPath()).thenReturn("/content/dam/bcuspublic-cf-folder/disclosure-x");
     when(asset.adaptTo(Node.class)).thenReturn(assetNode);
     when(assetNode.isNodeType("dam:Asset")).thenReturn(true);
 
-    // Content Fragment adaptation + element content the code expects
+    // --- Mock the ContentFragment adaptation ---
     com.adobe.cq.dam.cfm.ContentFragment cf = mock(com.adobe.cq.dam.cfm.ContentFragment.class);
-    com.adobe.cq.dam.cfm.ContentElement el = mock(com.adobe.cq.dam.cfm.ContentElement.class);
+    com.adobe.cq.dam.cfm.ContentElement element = mock(com.adobe.cq.dam.cfm.ContentElement.class);
     when(asset.adaptTo(com.adobe.cq.dam.cfm.ContentFragment.class)).thenReturn(cf);
+    when(cf.getElement("disclosure-1")).thenReturn(element);
+    when(element.getContent()).thenReturn("disclosure-1");
 
-    // We'll make the element name be "disclosure-1" and its content also "disclosure-1"
-    // (your code then uses this as the key in parentJson)
-    when(cf.getElement("disclosure-1")).thenReturn(el);
-    when(el.getContent()).thenReturn("disclosure-1");
-
-    // parent holder
     Map<String, Object> parentJson = new HashMap<>();
 
-    // --- Stub the static utility that NPEs in your stack: GlobalUtil.getCustomDataTypeProperty(...) ---
-    // Requires mockito-inline in test scope. If you already have it, this works with your current runner.
+    // --- Mock the static GlobalUtil method that caused NPE ---
     try (org.mockito.MockedStatic<com.bcuspublic.wcm.util.GlobalUtil> util =
                  org.mockito.Mockito.mockStatic(com.bcuspublic.wcm.util.GlobalUtil.class)) {
-
-        util.when(() -> com.bcuspublic.wcm.util.GlobalUtil.getCustomDataTypeProperty(asset, resourceResolver))
+        util.when(() -> com.bcuspublic.wcm.util.GlobalUtil
+                .getCustomDataTypeProperty(asset, resourceResolver))
             .thenReturn("disclosure-1");
 
-        // --- Invoke the private method via reflection (no changes to your declarations) ---
-        java.lang.reflect.Method m = ContentFragmentServlet.class.getDeclaredMethod(
+        // --- Invoke private method ---
+        Method m = ContentFragmentServlet.class.getDeclaredMethod(
                 "getContentInfo",
-                org.apache.sling.api.resource.ResourceResolver.class,
-                org.apache.sling.api.resource.Resource.class,
-                java.util.Map.class,
-                java.lang.String.class
+                ResourceResolver.class,
+                Resource.class,
+                Map.class,
+                String.class
         );
         m.setAccessible(true);
         m.invoke(servlet, resourceResolver, asset, parentJson, "data");
     }
 
-    // --- Assert: the element content ("disclosure-1") is the map key ---
-    org.junit.Assert.assertTrue(parentJson.containsKey("disclosure-1"));
-    // value can be whatever buildFragmentJson returns; we just verify the key exists
+    // --- Validate result ---
+    assertTrue("Expected key 'disclosure-1' missing", parentJson.containsKey("disclosure-1"));
 }
