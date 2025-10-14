@@ -1,36 +1,50 @@
 @Test
 public void getContentInfoTestAsset() throws Exception {
+    // SUT
     ContentFragmentServlet servlet = new ContentFragmentServlet();
 
-    // Mock an asset-type resource
-    Resource assetResource = mock(Resource.class);
+    // --- Arrange: a dam:Asset resource ---
+    Resource asset = mock(Resource.class);
     Node assetNode = mock(Node.class);
-
-    when(assetResource.getResourceType()).thenReturn("dam:Asset");
-    when(assetResource.getPath()).thenReturn("/content/bcuspublic/cf-folder");
-    when(assetResource.adaptTo(Node.class)).thenReturn(assetNode);
+    when(asset.getResourceType()).thenReturn("dam:Asset");
+    when(asset.getPath()).thenReturn("/content/dam/bcuspublic-cf-folder/disclosure-x");
+    when(asset.adaptTo(Node.class)).thenReturn(assetNode);
     when(assetNode.isNodeType("dam:Asset")).thenReturn(true);
 
-    // Mock the ContentFragment adaptation and its behavior
-    com.adobe.cq.dam.cfm.ContentFragment mockCF = mock(com.adobe.cq.dam.cfm.ContentFragment.class);
-    when(assetResource.adaptTo(com.adobe.cq.dam.cfm.ContentFragment.class)).thenReturn(mockCF);
-    when(mockCF.getElement("disclosure-1")).thenReturn(mock(com.adobe.cq.dam.cfm.ContentElement.class));
+    // Content Fragment adaptation + element content the code expects
+    com.adobe.cq.dam.cfm.ContentFragment cf = mock(com.adobe.cq.dam.cfm.ContentFragment.class);
+    com.adobe.cq.dam.cfm.ContentElement el = mock(com.adobe.cq.dam.cfm.ContentElement.class);
+    when(asset.adaptTo(com.adobe.cq.dam.cfm.ContentFragment.class)).thenReturn(cf);
 
-    // Mock ValueMap
-    ValueMap valueMap = new ValueMapDecorator(new HashMap<>());
-    when(assetResource.getValueMap()).thenReturn(valueMap);
+    // We'll make the element name be "disclosure-1" and its content also "disclosure-1"
+    // (your code then uses this as the key in parentJson)
+    when(cf.getElement("disclosure-1")).thenReturn(el);
+    when(el.getContent()).thenReturn("disclosure-1");
 
-    // parentJson to hold output
+    // parent holder
     Map<String, Object> parentJson = new HashMap<>();
 
-    // Call private method via reflection
-    Method m = ContentFragmentServlet.class.getDeclaredMethod(
-            "getContentInfo",
-            ResourceResolver.class, Resource.class, Map.class, String.class
-    );
-    m.setAccessible(true);
-    m.invoke(servlet, resourceResolver, assetResource, parentJson, "data");
+    // --- Stub the static utility that NPEs in your stack: GlobalUtil.getCustomDataTypeProperty(...) ---
+    // Requires mockito-inline in test scope. If you already have it, this works with your current runner.
+    try (org.mockito.MockedStatic<com.bcuspublic.wcm.util.GlobalUtil> util =
+                 org.mockito.Mockito.mockStatic(com.bcuspublic.wcm.util.GlobalUtil.class)) {
 
-    // Assert output key created
-    assertTrue(parentJson.containsKey("data"));
+        util.when(() -> com.bcuspublic.wcm.util.GlobalUtil.getCustomDataTypeProperty(asset, resourceResolver))
+            .thenReturn("disclosure-1");
+
+        // --- Invoke the private method via reflection (no changes to your declarations) ---
+        java.lang.reflect.Method m = ContentFragmentServlet.class.getDeclaredMethod(
+                "getContentInfo",
+                org.apache.sling.api.resource.ResourceResolver.class,
+                org.apache.sling.api.resource.Resource.class,
+                java.util.Map.class,
+                java.lang.String.class
+        );
+        m.setAccessible(true);
+        m.invoke(servlet, resourceResolver, asset, parentJson, "data");
+    }
+
+    // --- Assert: the element content ("disclosure-1") is the map key ---
+    org.junit.Assert.assertTrue(parentJson.containsKey("disclosure-1"));
+    // value can be whatever buildFragmentJson returns; we just verify the key exists
 }
