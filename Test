@@ -1,3 +1,38 @@
-curl -u <author-user>:<password> -X POST "http://<author-host>:4502/bin/replicate.json" \
-  -F "cmd=delete" \
-  -F "path=/content/dam/styles"
+@Test
+public void buildJsonResponse_addsToNoIdList_whenNoIdFolderAndResultNotEmpty() throws Exception {
+    ContentFragmentServlet servlet = new ContentFragmentServlet();
+
+    // flip the private flag isNoIdFolder = true
+    Field f = ContentFragmentServlet.class.getDeclaredField("isNoIdFolder");
+    f.setAccessible(true);
+    f.set(servlet, true);
+    // also ensure isCfPath = false so we hit the 'else if (isNoIdFolder ...)' branch
+    Field f2 = ContentFragmentServlet.class.getDeclaredField("isCfPath");
+    f2.setAccessible(true);
+    f2.set(servlet, false);
+
+    // prepare inputs for buildJsonResponse(...)
+    Map<String, Object> result = new HashMap<>();
+    result.put("anyKey", "anyVal");                    // NON-EMPTY → satisfies MapUtils.isNotEmpty(result)
+    Map<String, Map<String, Object>> jsonObject = new HashMap<>();
+    Map<String, String> queryParams = new HashMap<>();
+    Resource parent = Mockito.mock(Resource.class);
+    List<Map<String, Object>> noIdFolderResponse = new ArrayList<>();
+
+    // call the private method
+    Method m = ContentFragmentServlet.class.getDeclaredMethod(
+            "buildJsonResponse",
+            Map.class,                // result
+            Map.class,                // jsonObject
+            Map.class,                // queryParams (unused here)
+            boolean.class,            // isMasterContentFragment
+            Resource.class,           // parentFragmentResource
+            List.class                // noIdFolderResponse
+    );
+    m.setAccessible(true);
+    m.invoke(servlet, result, jsonObject, queryParams, false, parent, noIdFolderResponse);
+
+    // assert the line executed
+    assertEquals(1, noIdFolderResponse.size());
+    assertSame(result, noIdFolderResponse.get(0));
+}
