@@ -1,15 +1,69 @@
-// SUPER MINIMAL TEST HANDLER
-$(document).off("click.vanityTest", ".deleteVanityUrlAssociation button.coral3-Multifield-remove");
-$(document).on("click.vanityTest", ".deleteVanityUrlAssociation button.coral3-Multifield-remove", function () {
-    console.log("[vanity-test] delete button clicked");
+$(".deleteVanityUrlAssociation button.coral3-Multifield-remove").click(function (e) {
+    // 🔹 prevent any other click handlers on this button from running
+    e.stopImmediatePropagation();
 
-    // just nuke ALL vanity URL rows so we know the handler is firing
-    var count = 0;
+    // optional: if original handler was doing preventDefault
+    // e.preventDefault();
+
+    // get offer product id from this multifield item
+    var $item = $(this).closest("coral-multifield-item");
+    var offerProdId = $item.find("input.primaryOfferProductId").val();
+
+    if (!offerProdId) {
+        return;
+    }
+
+    var offerProdIdLc = offerProdId.toLowerCase();
+
+    // helper: delete vanity multifield items matching predicate
+    function deleteVanity(predicate) {
+        $("input[name='./sling:vanityPath']").each(function () {
+            var vanity = (this.value || "").toLowerCase();
+            if (predicate(vanity)) {
+                $(this).closest("coral-multifield-item").remove();
+                $(this).closest("li").remove(); // coral2 fallback
+            }
+        });
+    }
+
+    // ---------- 1) OLD LOGIC: vanity URL contains offerProductId ----------
+    var oldPatternMatched = false;
+
     $("input[name='./sling:vanityPath']").each(function () {
-        console.log("[vanity-test] removing vanity:", this.value);
-        $(this).parent().closest("coral-multifield-item").remove();
-        $(this).parent().closest("li").remove();
-        count++;
+        var vanity = (this.value || "").toLowerCase();
+        if (vanity.indexOf(offerProdIdLc) !== -1) {
+            oldPatternMatched = true;
+        }
     });
-    console.log("[vanity-test] total deleted:", count);
+
+    if (oldPatternMatched) {
+        deleteVanity(function (vanity) {
+            return vanity.indexOf(offerProdIdLc) !== -1;
+        });
+        alert("old pattern is true");
+        return;  // ✅ our function stops here, and no other handler will run
+    }
+
+    // ---------- 2) NEW LOGIC: MPC servlet ----------
+    $.ajax({
+        url: "/bin/bcuspublic/offerproductmpccodes",
+        type: "GET",
+        dataType: "json",
+        data: {
+            offerProductId: offerProdId
+        }
+    }).done(function (mpcCodes) {
+        if (!mpcCodes || !mpcCodes.length) {
+            return;
+        }
+
+        var mpcLower = $.map(mpcCodes, function (code) {
+            return (code || "").toLowerCase();
+        });
+
+        deleteVanity(function (vanity) {
+            var lastSeg = vanity.substring(vanity.lastIndexOf("/") + 1);
+            return mpcLower.indexOf(lastSeg) !== -1;
+        });
+    });
 });
