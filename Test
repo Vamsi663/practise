@@ -1,38 +1,67 @@
-@Test
-public void buildJsonResponse_addsToNoIdList_whenNoIdFolderAndResultNotEmpty() throws Exception {
-    ContentFragmentServlet servlet = new ContentFragmentServlet();
+(function ($, $document) {
+    "use strict";
 
-    // flip the private flag isNoIdFolder = true
-    Field f = ContentFragmentServlet.class.getDeclaredField("isNoIdFolder");
-    f.setAccessible(true);
-    f.set(servlet, true);
-    // also ensure isCfPath = false so we hit the 'else if (isNoIdFolder ...)' branch
-    Field f2 = ContentFragmentServlet.class.getDeclaredField("isCfPath");
-    f2.setAccessible(true);
-    f2.set(servlet, false);
+    $document.on("foundation-contentloaded", function () {
 
-    // prepare inputs for buildJsonResponse(...)
-    Map<String, Object> result = new HashMap<>();
-    result.put("anyKey", "anyVal");                    // NON-EMPTY → satisfies MapUtils.isNotEmpty(result)
-    Map<String, Map<String, Object>> jsonObject = new HashMap<>();
-    Map<String, String> queryParams = new HashMap<>();
-    Resource parent = Mockito.mock(Resource.class);
-    List<Map<String, Object>> noIdFolderResponse = new ArrayList<>();
+        $(".deleteVanityUrlAssociation button.coral3-Multifield-remove").click(function () {
 
-    // call the private method
-    Method m = ContentFragmentServlet.class.getDeclaredMethod(
-            "buildJsonResponse",
-            Map.class,                // result
-            Map.class,                // jsonObject
-            Map.class,                // queryParams (unused here)
-            boolean.class,            // isMasterContentFragment
-            Resource.class,           // parentFragmentResource
-            List.class                // noIdFolderResponse
-    );
-    m.setAccessible(true);
-    m.invoke(servlet, result, jsonObject, queryParams, false, parent, noIdFolderResponse);
+            var $row = $(this).closest("coral-multifield-item");
+            var offerProdId = $row.find(".primaryOfferProductId").val();
 
-    // assert the line executed
-    assertEquals(1, noIdFolderResponse.size());
-    assertSame(result, noIdFolderResponse.get(0));
-}
+            if (!offerProdId) return;
+
+            var offerProdIdLc = offerProdId.toLowerCase();
+
+            // function to delete vanity items
+            function deleteVanity(predicate) {
+                $("input[name='./sling:vanityPath']").each(function () {
+                    var vanity = (this.value || "").toLowerCase();
+                    if (predicate(vanity)) {
+                        $(this).closest("coral-multifield-item").remove();
+                        $(this).closest("li").remove();
+                    }
+                });
+            }
+
+            // ------- STEP 1: Try OLD LOGIC (delete by offerProductId) -------
+            var oldPatternMatched = false;
+
+            $("input[name='./sling:vanityPath']").each(function () {
+                var vanity = (this.value || "").toLowerCase();
+                if (vanity.indexOf(offerProdIdLc) !== -1) {
+                    oldPatternMatched = true;
+                }
+            });
+
+            if (oldPatternMatched) {
+                // Delete using old logic, NO AJAX needed
+                deleteVanity(function (vanity) {
+                    return vanity.indexOf(offerProdIdLc) !== -1;
+                });
+                return; // STOP HERE
+            }
+
+            // ------- STEP 2: Only if old-style URLs weren't found → use MPC logic -------
+
+            $.ajax({
+                url: "/bin/bcuspublic/offerproductmpccodes",
+                type: "GET",
+                dataType: "json",
+                data: { offerProductId: offerProdId }
+            }).done(function (mpcCodes) {
+
+                if (!mpcCodes || !mpcCodes.length) return;
+
+                var mpcLower = mpcCodes.map(code => code.toLowerCase());
+
+                deleteVanity(function (vanity) {
+                    var lastSeg = vanity.substring(vanity.lastIndexOf("/") + 1);
+                    return mpcLower.indexOf(lastSeg) !== -1;
+                });
+            });
+
+        });
+
+    });
+
+})($, $(document));
