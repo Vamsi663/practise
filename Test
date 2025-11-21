@@ -1,73 +1,76 @@
-// BEFORE
-// $(".deleteVanityUrlAssociation button.coral3-Multifield-remove").click(function () {
+// inside Coral.commons.ready(...)
+var deleteSelector = ".deleteVanityUrlAssociation button.coral3-Multifield-remove";
 
-// AFTER
-$document.off("click.deleteVanity",
-    ".deleteVanityUrlAssociation button.coral3-Multifield-remove");
+// make sure we don't stack handlers
+$(deleteSelector).off("click.deleteVanity");
 
-$document.on("click.deleteVanity",
-    ".deleteVanityUrlAssociation button.coral3-Multifield-remove",
-    function () {
+// bind a single handler
+$(deleteSelector).on("click.deleteVanity", function () {
 
-        // get offer product id from this multifield item
-        var $item = $(this).closest("coral-multifield-item");
-        var offerProdId = $item.find("input.primaryOfferProductId").val();
+    // get offer product id from this multifield item
+    var $item = $(this).closest("coral-multifield-item");
+    var offerProdId = $item.find("input.primaryOfferProductId").val();
 
-        if (!offerProdId) {
+    if (!offerProdId) {
+        return;
+    }
+
+    var offerProdIdLc = offerProdId.toLowerCase();
+
+    // helper: delete vanity multifield items matching predicate
+    function deleteVanity(predicate) {
+        $("input[name='./sling:vanityPath']").each(function () {
+            var vanity = (this.value || "").toLowerCase();
+            if (predicate(vanity)) {
+                $(this).closest("coral-multifield-item").remove();
+                $(this).closest("li").remove(); // coral2 fallback
+            }
+        });
+    }
+
+    // ---------- 1) OLD LOGIC: vanity URL contains offerProductId ----------
+    var oldPatternMatched = false;
+    $("input[name='./sling:vanityPath']").each(function () {
+        var vanity = (this.value || "").toLowerCase();
+        if (vanity.indexOf(offerProdIdLc) !== -1) {
+            oldPatternMatched = true;
+            return false; // break
+        }
+    });
+
+    if (oldPatternMatched) {
+        deleteVanity(function (vanity) {
+            return vanity.indexOf(offerProdIdLc) !== -1;
+        });
+        return; // stop here, no servlet call
+    }
+
+    // ---------- 2) NEW LOGIC: vanity URL ends with MPC codes ----------
+    // OPTIONAL: if there are no vanity URLs at all, don't even call servlet
+    if ($("input[name='./sling:vanityPath']").length === 0) {
+        return;
+    }
+
+    $.ajax({
+        url: "/bin/bcuspublic/offerproductmpccodes",
+        type: "GET",
+        dataType: "json",
+        data: {
+            offerProductId: offerProdId
+        }
+    }).done(function (mpcCodes) {
+
+        if (!mpcCodes || !mpcCodes.length) {
             return;
         }
 
-        var offerProdIdLc = offerProdId.toLowerCase();
-
-        // helper: delete vanity multifield items matching predicate
-        function deleteVanity(predicate) {
-            $("input[name='./sling:vanityPath']").each(function () {
-                var vanity = (this.value || "").toLowerCase();
-                if (predicate(vanity)) {
-                    $(this).closest("coral-multifield-item").remove();
-                    $(this).closest("li").remove(); // coral2 fallback
-                }
-            });
-        }
-
-        // ---------- 1) OLD LOGIC ----------
-        var oldPatternMatched = false;
-        $("input[name='./sling:vanityPath']").each(function () {
-            var vanity = (this.value || "").toLowerCase();
-            if (vanity.indexOf(offerProdIdLc) !== -1) {
-                oldPatternMatched = true;
-                return false; // break
-            }
+        var mpcLower = $.map(mpcCodes, function (code) {
+            return (code || "").toLowerCase();
         });
 
-        if (oldPatternMatched) {
-            deleteVanity(function (vanity) {
-                return vanity.indexOf(offerProdIdLc) !== -1;
-            });
-            return; // stop here, no servlet call
-        }
-
-        // ---------- 2) NEW LOGIC ----------
-        $.ajax({
-            url: "/bin/bcuspublic/offerproductmpccodes",
-            type: "GET",
-            dataType: "json",
-            data: {
-                offerProductId: offerProdId
-            }
-        }).done(function (mpcCodes) {
-            if (!mpcCodes || !mpcCodes.length) {
-                return;
-            }
-
-            var mpcLower = $.map(mpcCodes, function (code) {
-                return (code || "").toLowerCase();
-            });
-
-            deleteVanity(function (vanity) {
-                var lastSeg = vanity.substring(vanity.lastIndexOf("/") + 1);
-                return mpcLower.indexOf(lastSeg) !== -1;
-            });
+        deleteVanity(function (vanity) {
+            var lastSeg = vanity.substring(vanity.lastIndexOf("/") + 1);
+            return mpcLower.indexOf(lastSeg) !== -1;
         });
-    }
-);
+    });
+});
