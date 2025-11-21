@@ -1,55 +1,63 @@
-// ORIGINAL binding style – keep this
-$(".deleteVanityUrlAssociation button.coral3-Multifield-remove").click(function () {
+// DEBUG + combined logic
+$(document).off("click.vanityDelete", ".deleteVanityUrlAssociation button.coral3-Multifield-remove");
+$(document).on("click.vanityDelete", ".deleteVanityUrlAssociation button.coral3-Multifield-remove", function () {
 
-    // use the same parent() as your original working JS
+    console.log("[vanity-delete] button clicked");
+
+    // IMPORTANT: stick to your original structure: use parent()
     var $container = $(this).parent();
 
-    // get offer product id from this row (same as original)
-    if (!$container.find("input.primaryOfferProductId").length) {
+    var $offerInput = $container.find("input.primaryOfferProductId");
+
+    if ($offerInput.length === 0) {
+        console.log("[vanity-delete] NO primaryOfferProductId input found in parent()");
         return;
     }
-    var offerProdId = $container.find("input.primaryOfferProductId").val();
+
+    var offerProdId = $offerInput.val();
+    console.log("[vanity-delete] offerProdId =", offerProdId);
+
     if (!offerProdId) {
+        console.log("[vanity-delete] offerProdId is empty, aborting");
         return;
     }
+
     var offerProdIdLc = offerProdId.toLowerCase();
 
-    // helper: delete vanity multifield items matching predicate
-    function deleteVanity(predicate) {
+    function deleteVanity(predicate, label) {
+        var deleted = 0;
         $("input[name='./sling:vanityPath']").each(function () {
             var vanity = (this.value || "").toLowerCase();
             if (predicate(vanity)) {
+                console.log("[vanity-delete] deleting (" + label + "):", vanity);
                 $(this).parent().closest("coral-multifield-item").remove();
-                $(this).parent().closest("li").remove(); // coral2 fallback
+                $(this).parent().closest("li").remove(); // Coral 2 fallback
+                deleted++;
             }
         });
+        console.log("[vanity-delete] deleted count (" + label + "):", deleted);
+        return deleted;
     }
 
-    // ---------------- 1) OLD LOGIC: vanity contains offerProductId ----------------
-    var oldPatternMatched = false;
+    // ----- 1) OLD LOGIC: vanity contains offerProductId -----
+    var oldDeleted = deleteVanity(function (vanity) {
+        return vanity.indexOf(offerProdIdLc) !== -1;
+    }, "offerProductId");
 
-    $("input[name='./sling:vanityPath']").each(function () {
-        var vanity = (this.value || "").toLowerCase();
-        if (vanity.indexOf(offerProdIdLc) !== -1) {
-            oldPatternMatched = true;
-            // delete directly (original behaviour)
-            $(this).parent().closest("coral-multifield-item").remove();
-            $(this).parent().closest("li").remove();
-        }
-    });
-
-    if (oldPatternMatched) {
-        // if we found old-style vanity URLs and already removed them,
-        // we don't need the servlet at all
+    if (oldDeleted > 0) {
+        console.log("[vanity-delete] old-style vanity URLs deleted, NO servlet call");
         return;
     }
 
-    // if there are no vanity URLs at all, nothing to do
+    // If there are no vanity URLs at all, nothing to do
     if ($("input[name='./sling:vanityPath']").length === 0) {
+        console.log("[vanity-delete] no vanity URL inputs on page, nothing to do");
         return;
     }
 
-    // -------------- 2) NEW LOGIC: vanity ends with MPC codes --------------
+    // ----- 2) NEW LOGIC: MPC vanity URLs (via servlet) -----
+    console.log("[vanity-delete] calling servlet for MPC codes…");
+
     $.ajax({
         url: "/bin/bcuspublic/offerproductmpccodes",
         type: "GET",
@@ -59,7 +67,10 @@ $(".deleteVanityUrlAssociation button.coral3-Multifield-remove").click(function 
         }
     }).done(function (mpcCodes) {
 
+        console.log("[vanity-delete] servlet response:", mpcCodes);
+
         if (!mpcCodes || !mpcCodes.length) {
+            console.log("[vanity-delete] no MPC codes returned, nothing to delete");
             return;
         }
 
@@ -68,9 +79,10 @@ $(".deleteVanityUrlAssociation button.coral3-Multifield-remove").click(function 
         });
 
         deleteVanity(function (vanity) {
-            var lastSeg = vanity.substring(vanity.lastIndexOf("/") + 1); // "mpc1"
+            var lastSeg = vanity.substring(vanity.lastIndexOf("/") + 1);
             return mpcLower.indexOf(lastSeg) !== -1;
-        });
+        }, "mpc");
+    }).fail(function (xhr, status, err) {
+        console.log("[vanity-delete] servlet ERROR:", status, err);
     });
-
 });
