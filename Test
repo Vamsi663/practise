@@ -1,88 +1,15 @@
-// DEBUG + combined logic
-$(document).off("click.vanityDelete", ".deleteVanityUrlAssociation button.coral3-Multifield-remove");
-$(document).on("click.vanityDelete", ".deleteVanityUrlAssociation button.coral3-Multifield-remove", function () {
+// SUPER MINIMAL TEST HANDLER
+$(document).off("click.vanityTest", ".deleteVanityUrlAssociation button.coral3-Multifield-remove");
+$(document).on("click.vanityTest", ".deleteVanityUrlAssociation button.coral3-Multifield-remove", function () {
+    console.log("[vanity-test] delete button clicked");
 
-    console.log("[vanity-delete] button clicked");
-
-    // IMPORTANT: stick to your original structure: use parent()
-    var $container = $(this).parent();
-
-    var $offerInput = $container.find("input.primaryOfferProductId");
-
-    if ($offerInput.length === 0) {
-        console.log("[vanity-delete] NO primaryOfferProductId input found in parent()");
-        return;
-    }
-
-    var offerProdId = $offerInput.val();
-    console.log("[vanity-delete] offerProdId =", offerProdId);
-
-    if (!offerProdId) {
-        console.log("[vanity-delete] offerProdId is empty, aborting");
-        return;
-    }
-
-    var offerProdIdLc = offerProdId.toLowerCase();
-
-    function deleteVanity(predicate, label) {
-        var deleted = 0;
-        $("input[name='./sling:vanityPath']").each(function () {
-            var vanity = (this.value || "").toLowerCase();
-            if (predicate(vanity)) {
-                console.log("[vanity-delete] deleting (" + label + "):", vanity);
-                $(this).parent().closest("coral-multifield-item").remove();
-                $(this).parent().closest("li").remove(); // Coral 2 fallback
-                deleted++;
-            }
-        });
-        console.log("[vanity-delete] deleted count (" + label + "):", deleted);
-        return deleted;
-    }
-
-    // ----- 1) OLD LOGIC: vanity contains offerProductId -----
-    var oldDeleted = deleteVanity(function (vanity) {
-        return vanity.indexOf(offerProdIdLc) !== -1;
-    }, "offerProductId");
-
-    if (oldDeleted > 0) {
-        console.log("[vanity-delete] old-style vanity URLs deleted, NO servlet call");
-        return;
-    }
-
-    // If there are no vanity URLs at all, nothing to do
-    if ($("input[name='./sling:vanityPath']").length === 0) {
-        console.log("[vanity-delete] no vanity URL inputs on page, nothing to do");
-        return;
-    }
-
-    // ----- 2) NEW LOGIC: MPC vanity URLs (via servlet) -----
-    console.log("[vanity-delete] calling servlet for MPC codes…");
-
-    $.ajax({
-        url: "/bin/bcuspublic/offerproductmpccodes",
-        type: "GET",
-        dataType: "json",
-        data: {
-            offerProductId: offerProdId
-        }
-    }).done(function (mpcCodes) {
-
-        console.log("[vanity-delete] servlet response:", mpcCodes);
-
-        if (!mpcCodes || !mpcCodes.length) {
-            console.log("[vanity-delete] no MPC codes returned, nothing to delete");
-            return;
-        }
-
-        var mpcLower = $.map(mpcCodes, function (code) {
-            return (code || "").toLowerCase();
-        });
-
-        deleteVanity(function (vanity) {
-            var lastSeg = vanity.substring(vanity.lastIndexOf("/") + 1);
-            return mpcLower.indexOf(lastSeg) !== -1;
-        }, "mpc");
-    }).fail(function (xhr, status, err) {
-        console.log("[vanity-delete] servlet ERROR:", status, err);
+    // just nuke ALL vanity URL rows so we know the handler is firing
+    var count = 0;
+    $("input[name='./sling:vanityPath']").each(function () {
+        console.log("[vanity-test] removing vanity:", this.value);
+        $(this).parent().closest("coral-multifield-item").remove();
+        $(this).parent().closest("li").remove();
+        count++;
     });
+    console.log("[vanity-test] total deleted:", count);
 });
