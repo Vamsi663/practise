@@ -1,76 +1,108 @@
-// inside Coral.commons.ready(...)
-var deleteSelector = ".deleteVanityUrlAssociation button.coral3-Multifield-remove";
+(function ($, $document, author) {
+    "use strict";
 
-// make sure we don't stack handlers
-$(deleteSelector).off("click.deleteVanity");
+    $document.on("foundation-contentloaded", function (e) {
+        Coral.commons.ready(this, function (el) {
 
-// bind a single handler
-$(deleteSelector).on("click.deleteVanity", function () {
+            // make fields readonly
+            var $textField = $(".bcusReadOnlyDialogField");
+            $textField.prop("readonly", true);
+            $textField.attr("readonly", true);
 
-    // get offer product id from this multifield item
-    var $item = $(this).closest("coral-multifield-item");
-    var offerProdId = $item.find("input.primaryOfferProductId").val();
+            // -----------------------------
+            // Remove Delete Button if needed
+            // -----------------------------
+            // coral 2
+            $(".bcus-hide-multifield-delete button.js-coral-Multifield-remove.coral-Multifield-remove").remove();
+            // coral 3
+            $(".bcus-hide-multifield-delete button.coral3-Button.coral3-Button--quiet.coral3-Multifield-remove").remove();
 
-    if (!offerProdId) {
-        return;
-    }
+            $(".vanity-url-delete .coral3-Multifield-item button.coral3-Button.coral3-Multifield-remove").remove();
 
-    var offerProdIdLc = offerProdId.toLowerCase();
+            // -----------------------------------------------------------------
+            // DELETE VANITY URL ASSOCIATION (old offerProductId + new MPC logic)
+            // -----------------------------------------------------------------
+            $(".deleteVanityUrlAssociation button.coral3-Multifield-remove").click(function () {
 
-    // helper: delete vanity multifield items matching predicate
-    function deleteVanity(predicate) {
-        $("input[name='./sling:vanityPath']").each(function () {
-            var vanity = (this.value || "").toLowerCase();
-            if (predicate(vanity)) {
-                $(this).closest("coral-multifield-item").remove();
-                $(this).closest("li").remove(); // coral2 fallback
-            }
+                // offer product id from this multifield item
+                var $item = $(this).closest("coral-multifield-item");
+                var offerProdId = $item.find("input.primaryOfferProductId").val();
+
+                if (!offerProdId) {
+                    return;
+                }
+
+                var offerProdIdLc = offerProdId.toLowerCase();
+
+                // helper: delete vanity multifield items matching predicate
+                function deleteVanity(predicate) {
+                    $("input[name='./sling:vanityPath']").each(function () {
+                        var vanity = (this.value || "").toLowerCase();
+                        if (predicate(vanity)) {
+                            $(this).closest("coral-multifield-item").remove();
+                            $(this).closest("li").remove(); // coral 2 fallback
+                        }
+                    });
+                }
+
+                // ---------------- 1) OLD LOGIC: vanity contains offerProductId ----------------
+                var oldPatternMatched = false;
+
+                $("input[name='./sling:vanityPath']").each(function () {
+                    var vanity = (this.value || "").toLowerCase();
+                    if (vanity.indexOf(offerProdIdLc) !== -1) {
+                        oldPatternMatched = true;
+                        return false; // break
+                    }
+                });
+
+                if (oldPatternMatched) {
+                    // delete old-style vanity URLs and stop – no servlet call
+                    deleteVanity(function (vanity) {
+                        return vanity.indexOf(offerProdIdLc) !== -1;
+                    });
+                    return;
+                }
+
+                // if there are no vanity URLs at all, nothing to do
+                if ($("input[name='./sling:vanityPath']").length === 0) {
+                    return;
+                }
+
+                // -------------- 2) NEW LOGIC: vanity ends with MPC codes --------------
+                $.ajax({
+                    url: "/bin/bcuspublic/offerproductmpccodes",
+                    type: "GET",
+                    dataType: "json",
+                    data: {
+                        offerProductId: offerProdId
+                    }
+                }).done(function (mpcCodes) {
+
+                    if (!mpcCodes || !mpcCodes.length) {
+                        return;
+                    }
+
+                    var mpcLower = $.map(mpcCodes, function (code) {
+                        return (code || "").toLowerCase();
+                    });
+
+                    deleteVanity(function (vanity) {
+                        var lastSeg = vanity.substring(vanity.lastIndexOf("/") + 1); // mpc1
+                        return mpcLower.indexOf(lastSeg) !== -1;
+                    });
+                });
+
+            });
+
+            // -----------------------------
+            // Remove Add Button
+            // -----------------------------
+            // coral 2
+            $(".bcus-hide-multifield-add button.js-coral-Multifield-add.coral-Multifield-add.coral-Button").remove();
+            // coral 3
+            $(".bcus-hide-multifield-add button.coral3-Button.coral3-Button--secondary").remove();
         });
-    }
-
-    // ---------- 1) OLD LOGIC: vanity URL contains offerProductId ----------
-    var oldPatternMatched = false;
-    $("input[name='./sling:vanityPath']").each(function () {
-        var vanity = (this.value || "").toLowerCase();
-        if (vanity.indexOf(offerProdIdLc) !== -1) {
-            oldPatternMatched = true;
-            return false; // break
-        }
     });
 
-    if (oldPatternMatched) {
-        deleteVanity(function (vanity) {
-            return vanity.indexOf(offerProdIdLc) !== -1;
-        });
-        return; // stop here, no servlet call
-    }
-
-    // ---------- 2) NEW LOGIC: vanity URL ends with MPC codes ----------
-    // OPTIONAL: if there are no vanity URLs at all, don't even call servlet
-    if ($("input[name='./sling:vanityPath']").length === 0) {
-        return;
-    }
-
-    $.ajax({
-        url: "/bin/bcuspublic/offerproductmpccodes",
-        type: "GET",
-        dataType: "json",
-        data: {
-            offerProductId: offerProdId
-        }
-    }).done(function (mpcCodes) {
-
-        if (!mpcCodes || !mpcCodes.length) {
-            return;
-        }
-
-        var mpcLower = $.map(mpcCodes, function (code) {
-            return (code || "").toLowerCase();
-        });
-
-        deleteVanity(function (vanity) {
-            var lastSeg = vanity.substring(vanity.lastIndexOf("/") + 1);
-            return mpcLower.indexOf(lastSeg) !== -1;
-        });
-    });
-});
+})(jQuery, jQuery(document), Granite.author);
