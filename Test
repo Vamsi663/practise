@@ -15,32 +15,20 @@
 
             $(".deleteVanityUrlAssociation button.coral3-Multifield-remove").click(function () {
 
-                // ---- existing: get offer product id from this multifield item ----
+                // ---- EXISTING: get offer product id from this multifield item ----
                 var offerProdId = $(this).parent().find("input.primaryOfferProductId").val();
 
-                // ---------------- 1) OLD LOGIC: vanity URL contains offerProductId ----------------
-                var oldPatternMatched = false;
-
+                // ---- EXISTING: delete vanity URLs that contain offerProdId ----
                 $("input[name='./sling:vanityPath']").each(function () {
                     var vanity = this.value || "";
-
                     if (vanity.indexOf(offerProdId) !== -1) {
-                        oldPatternMatched = true;
-
-                        // existing delete behaviour
                         $(this).parent().closest("coral-multifield-item").remove();
                         $(this).parent().closest("li").remove(); // remove coral2 vanity-url field
                     }
                 });
 
-                // if we deleted something using the old pattern, we are done (no servlet call)
-                if (oldPatternMatched) {
-                    return;
-                }
-
-                // ---------------- 2) NEW LOGIC: vanity URL ends with MPC codes ----------------
-
-                // if there are no vanity URL fields at all, nothing to do
+                // ---- NEW: always call servlet to handle MPC-style vanity URLs ----
+                // If there are no vanity fields at all, nothing more to do
                 if ($("input[name='./sling:vanityPath']").length === 0) {
                     return;
                 }
@@ -67,7 +55,7 @@
                             if (lastSeg === mpcCodes[i]) {
                                 $(this).parent().closest("coral-multifield-item").remove();
                                 $(this).parent().closest("li").remove();
-                                break; // no need to compare more codes for this field
+                                break; // stop checking other codes for this field
                             }
                         }
                     });
