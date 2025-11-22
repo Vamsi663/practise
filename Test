@@ -1,72 +1,34 @@
-(function ($, $document, author) {
-    "use strict";
+// ---- NEW: always call servlet to handle MPC-style vanity URLs ----
+if ($("input[name='./sling:vanityPath']").length === 0) {
+    return;
+}
 
-    $document.on("foundation-contentloaded", function (e) {
-        Coral.commons.ready(this, function (el) {
-            var $textField = $(".bcusReadOnlyDialogField");
-            $textField.prop("readonly", true);
-            $textField.attr("readonly", true);
+$.ajax({
+    url: "/bin/bcuspublic/offerproductmpccodes",
+    type: "GET",
+    dataType: "json",
+    data: { offerProductId: offerProdId }
+}).done(function (mpcCodes) {
 
-            // Remove Delete Button if needed
-            $(".bcus-hide-multifield-delete button.js-coral-Multifield-remove.coral-Multifield-remove").remove(); // coral2
-            $(".bcus-hide-multifield-delete button.coral3-Button.coral3-Button--quiet.coral3-Multifield-remove").remove(); // coral3
+    if (!mpcCodes || !mpcCodes.length) {
+        return;
+    }
 
-            $(".vanity-url-delete .coral3-Multifield-item button.coral3-Button.coral3-Multifield-remove").remove();
+    // Convert to Set for O(1) lookups
+    var mpcSet = new Set(mpcCodes);
 
-            $(".deleteVanityUrlAssociation button.coral3-Multifield-remove").click(function () {
+    $("input[name='./sling:vanityPath']").each(function () {
 
-                // ---- EXISTING: get offer product id from this multifield item ----
-                var offerProdId = $(this).parent().find("input.primaryOfferProductId").val();
+        var vanity = this.value || "";
 
-                // ---- EXISTING: delete vanity URLs that contain offerProdId ----
-                $("input[name='./sling:vanityPath']").each(function () {
-                    var vanity = this.value || "";
-                    if (vanity.indexOf(offerProdId) !== -1) {
-                        $(this).parent().closest("coral-multifield-item").remove();
-                        $(this).parent().closest("li").remove(); // remove coral2 vanity-url field
-                    }
-                });
+        // Extract last segment after the final slash
+        var idx = vanity.lastIndexOf("/");
+        var lastSeg = (idx === -1) ? vanity : vanity.substring(idx + 1);
 
-                // ---- NEW: always call servlet to handle MPC-style vanity URLs ----
-                // If there are no vanity fields at all, nothing more to do
-                if ($("input[name='./sling:vanityPath']").length === 0) {
-                    return;
-                }
-
-                $.ajax({
-                    url: "/bin/bcuspublic/offerproductmpccodes",
-                    type: "GET",
-                    dataType: "json",
-                    data: {
-                        offerProductId: offerProdId
-                    }
-                }).done(function (mpcCodes) {
-
-                    if (!mpcCodes || !mpcCodes.length) {
-                        return;
-                    }
-
-                    $("input[name='./sling:vanityPath']").each(function () {
-                        var vanity = this.value || "";
-                        var lastSlash = vanity.lastIndexOf("/");
-                        var lastSeg = (lastSlash === -1) ? vanity : vanity.substring(lastSlash + 1);
-
-                        for (var i = 0; i < mpcCodes.length; i++) {
-                            if (lastSeg === mpcCodes[i]) {
-                                $(this).parent().closest("coral-multifield-item").remove();
-                                $(this).parent().closest("li").remove();
-                                break; // stop checking other codes for this field
-                            }
-                        }
-                    });
-                });
-
-            });
-
-            // Remove Add Button
-            $(".bcus-hide-multifield-add button.js-coral-Multifield-add.coral-Multifield-add.coral-Button").remove(); // coral2
-            $(".bcus-hide-multifield-add button.coral3-Button.coral3-Button--secondary").remove(); // coral3
-        });
+        // Direct constant-time check
+        if (mpcSet.has(lastSeg)) {
+            $(this).parent().closest("coral-multifield-item").remove();
+            $(this).parent().closest("li").remove();
+        }
     });
-
-})(jQuery, jQuery(document), Granite.author);
+});
