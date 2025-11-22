@@ -1,111 +1,121 @@
 (function ($, $document, author) {
     "use strict";
 
+    // Run when any dialog content is loaded
     $document.on("foundation-contentloaded", function (e) {
         Coral.commons.ready(this, function (el) {
 
-            // ------------------------------------------------------------------
-            // Make fields read-only (existing behavior)
-            // ------------------------------------------------------------------
+            // ------------------------------------------------------------
+            // Make configured fields read-only (existing behavior)
+            // ------------------------------------------------------------
             var $textField = $(".bcusReadOnlyDialogField");
             $textField.prop("readonly", true);
             $textField.attr("readonly", true);
 
-            // ------------------------------------------------------------------
-            // Remove Delete Buttons where needed (existing behavior)
-            // ------------------------------------------------------------------
-            // Coral 2 multifield delete button
+            // ------------------------------------------------------------
+            // Hide multifield delete buttons (existing behavior)
+            // ------------------------------------------------------------
+            // Coral 2 delete
             $(".bcus-hide-multifield-delete button.js-coral-Multifield-remove.coral-Multifield-remove").remove();
-            // Coral 3 multifield delete button
+            // Coral 3 delete
             $(".bcus-hide-multifield-delete button.coral3-Button.coral3-Button--quiet.coral3-Multifield-remove").remove();
 
-            // Vanity URL multifield delete button
+            // Vanity URL multifield delete
             $(".vanity-url-delete .coral3-Multifield-item button.coral3-Button.coral3-Multifield-remove").remove();
 
-            // ------------------------------------------------------------------
-            // Delete VANITY URLs when an Offer Product row is removed
-            //  - OLD pattern: vanity URL contains offerProductId
-            //  - NEW pattern: vanity URL ends with MPC code (via servlet)
-            // ------------------------------------------------------------------
-            $(".deleteVanityUrlAssociation button.coral3-Multifield-remove").click(function () {
+            // ------------------------------------------------------------
+            // When an offer product row is deleted, remove its vanity URLs
+            // ------------------------------------------------------------
+            // Use delegated binding + namespace to avoid duplicate handlers
+            $document.off("click.vanityDelete",
+                ".deleteVanityUrlAssociation button.coral3-Multifield-remove");
 
-                // get offer product id from this multifield item (row)
-                var $item = $(this).closest("coral-multifield-item");
-                var offerProdId = $item.find("input.primaryOfferProductId").val();
+            $document.on("click.vanityDelete",
+                ".deleteVanityUrlAssociation button.coral3-Multifield-remove",
+                function () {
 
-                if (!offerProdId) {
-                    return;
-                }
+                    // 1. Find offerProductId for the row being deleted
+                    var $row = $(this).closest("coral-multifield-item");
+                    var offerProdIdField = $row.find("input.primaryOfferProductId");
 
-                var offerProdIdLc = offerProdId.toLowerCase();
-
-                // helper: delete vanity multifield items matching predicate
-                function deleteVanity(predicate) {
-                    $("input[name='./sling:vanityPath']").each(function () {
-                        var vanity = (this.value || "").toLowerCase();
-                        if (predicate(vanity)) {
-                            $(this).closest("coral-multifield-item").remove();
-                            $(this).closest("li").remove(); // Coral 2 fallback
-                        }
-                    });
-                }
-
-                // ---------------- 1) OLD LOGIC: vanity URL contains offerProductId ----------------
-                var oldPatternMatched = false;
-
-                $("input[name='./sling:vanityPath']").each(function () {
-                    var vanity = (this.value || "").toLowerCase();
-                    if (vanity.indexOf(offerProdIdLc) !== -1) {
-                        oldPatternMatched = true;
+                    if (!offerProdIdField.length) {
+                        return; // nothing to match against
                     }
-                });
 
-                if (oldPatternMatched) {
-                    // delete old-style vanity URLs and skip servlet call
-                    deleteVanity(function (vanity) {
-                        return vanity.indexOf(offerProdIdLc) !== -1;
-                    });
-
-                    // (you used this for debugging; safe to remove later)
-                    // alert("old pattern is true");
-
-                    return;
-                }
-
-                // ---------------- 2) NEW LOGIC: vanity URL ends with MPC codes ----------------
-                $.ajax({
-                    url: "/bin/bcuspublic/offerproductmpccodes",
-                    type: "GET",
-                    dataType: "json",
-                    data: {
-                        offerProductId: offerProdId
-                    }
-                }).done(function (mpcCodes) {
-
-                    if (!mpcCodes || !mpcCodes.length) {
+                    var offerProdId = offerProdIdField.val();
+                    if (!offerProdId) {
                         return;
                     }
 
-                    // normalize MPC codes to lowercase
-                    var mpcLower = $.map(mpcCodes, function (code) {
-                        return (code || "").toLowerCase();
+                    // 2. Helper to delete vanity entries based on a predicate
+                    function deleteVanity(predicate) {
+                        var deleted = 0;
+                        $("input[name='./sling:vanityPath']").each(function () {
+                            var vanity = this.value || "";
+                            if (predicate(vanity)) {
+                                $(this).closest("coral-multifield-item").remove();
+                                $(this).closest("li").remove(); // Coral 2 fallback
+                                deleted++;
+                            }
+                        });
+                        return deleted;
+                    }
+
+                    // ----------------------------------------------------
+                    // A) OLD PATTERN: vanity path contains offerProductId
+                    //    (no servlet call in this case)
+                    // ----------------------------------------------------
+                    var deletedByOfferId = deleteVanity(function (vanity) {
+                        return vanity.indexOf(offerProdId) !== -1;
                     });
 
-                    // delete vanity URLs whose last segment equals one of the MPC codes
-                    deleteVanity(function (vanity) {
-                        var lastSeg = vanity.substring(vanity.lastIndexOf("/") + 1);
-                        return mpcLower.indexOf(lastSeg) !== -1;
+                    if (deletedByOfferId > 0) {
+                        // We found and removed old-style vanity URLs.
+                        // Nothing more to do, and no servlet call required.
+                        return;
+                    }
+
+                    // ----------------------------------------------------
+                    // B) NEW PATTERN: vanity path ends with MPC code
+                    //    (use servlet to fetch list of MPC codes)
+                    // ----------------------------------------------------
+                    // If there are no vanity URLs at all, skip servlet call
+                    if ($("input[name='./sling:vanityPath']").length === 0) {
+                        return;
+                    }
+
+                    $.ajax({
+                        url: "/bin/bcuspublic/offerproductmpccodes",
+                        type: "GET",
+                        dataType: "json",
+                        data: {
+                            offerProductId: offerProdId
+                        }
+                    }).done(function (mpcCodes) {
+                        if (!mpcCodes || !mpcCodes.length) {
+                            return;
+                        }
+
+                        // Normalize MPC list (no case conversion, just ensure strings)
+                        var mpcList = $.map(mpcCodes, function (code) {
+                            return (code || "").toString();
+                        });
+
+                        deleteVanity(function (vanity) {
+                            // last segment after final "/"
+                            var idx = vanity.lastIndexOf("/");
+                            var lastSeg = (idx === -1) ? vanity : vanity.substring(idx + 1);
+                            return mpcList.indexOf(lastSeg) !== -1;
+                        });
                     });
                 });
 
-            });
-
-            // ------------------------------------------------------------------
-            // Remove Add Buttons (existing behavior)
-            // ------------------------------------------------------------------
-            // Coral 2 add button
+            // ------------------------------------------------------------
+            // Hide multifield add buttons (existing behavior)
+            // ------------------------------------------------------------
+            // Coral 2 add
             $(".bcus-hide-multifield-add button.js-coral-Multifield-add.coral-Multifield-add.coral-Button").remove();
-            // Coral 3 add button
+            // Coral 3 add
             $(".bcus-hide-multifield-add button.coral3-Button.coral3-Button--secondary").remove();
         });
     });
