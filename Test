@@ -1,86 +1,133 @@
-package com.bcuspublic.wcm.service.offerproduct;
+package com.bcuspublic.wcm.servlet.offerproduct;
 
+import static com.bcuspublic.wcm.constants.OfferProductConstants.OFFER_PRODUCT_ID_QUERY_PARAM;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
-import org.apache.sling.api.resource.Resource;
+import javax.servlet.http.HttpServletResponse;
+
 import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.api.servlets.SlingHttpServletRequest;
+import org.apache.sling.api.servlets.SlingHttpServletResponse;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.Mockito;
 
-// Adjust imports to your actual classes / packages
-// import com.bcuspublic.wcm.models.offerproduct.OfferProductOptimized;
-// import com.bcuspublic.wcm.models.offerproduct.MomProductCode;
+import com.bcuspublic.wcm.service.common.ResourceResolvers;
+import com.bcuspublic.wcm.service.offerproduct.OfferProductUtil;
+import com.bcuspublic.wcm.service.common.SubService;
+import org.json.JSONArray;
 
 @RunWith(MockitoJUnitRunner.class)
-public class OfferProductUtilTest {
+public class FetchMpcCodesServletTest {
+
+    @InjectMocks
+    private FetchMpcCodesServlet servlet;
+
+    @Mock
+    private ResourceResolvers resourceResolvers;
 
     @Mock
     private ResourceResolver resourceResolver;
 
     @Mock
-    private Resource resource;
+    private SlingHttpServletRequest request;
 
     @Mock
-    private OfferProductOptimized offerProductData;
+    private SlingHttpServletResponse response;
 
-    @Mock
-    private MomProductCode momProductCode1;
-
-    @Mock
-    private MomProductCode momProductCode2;
-
-    @Test
-    public void testGetMpcCodeList_returnsCodesWhenPresent() {
-        String offerProductId = "ff64552f-5119-42ef-9485-656d1ad239e19";
-
-        // resourceResolver.getResource(...) -> resource
-        when(resourceResolver.getResource(anyString())).thenReturn(resource);
-
-        // resource.adaptTo(OfferProductOptimized.class) -> offerProductData
-        when(resource.adaptTo(OfferProductOptimized.class)).thenReturn(offerProductData);
-
-        // offerProductData.getMomProductCodeVO() -> list with one null in between
-        List<MomProductCode> momCodes =
-                Arrays.asList(momProductCode1, null, momProductCode2);
-        when(offerProductData.getMomProductCodeVO()).thenReturn(momCodes);
-
-        // Mom product codes
-        when(momProductCode1.getMomProductCode()).thenReturn("mpc1");
-        when(momProductCode2.getMomProductCode()).thenReturn("mpc2");
-
-        // call method under test
-        List<String> result =
-                OfferProductUtil.getMpcCodeList(offerProductId, resourceResolver);
-
-        // assertions
-        assertNotNull(result);
-        assertEquals(2, result.size());
-        assertEquals(Arrays.asList("mpc1", "mpc2"), result);
+    /**
+     * Helper to create a PrintWriter that writes into a String.
+     */
+    private PrintWriter prepareWriter(ByteArrayOutputStream out) throws Exception {
+        PrintWriter writer = new PrintWriter(out, true);
+        when(response.getWriter()).thenReturn(writer);
+        return writer;
     }
 
     @Test
-    public void testGetMpcCodeList_returnsEmptyWhenNoOfferProductData() {
+    public void testDoGet_withValidOfferProductId_returnsJsonArray() throws Exception {
+        String offerProductId = "ff64552f-5119-42ef-9485-656d1ad239e19";
+        List<String> mpcCodes = Arrays.asList("mpc1", "mpc2");
+
+        when(resourceResolvers.getResourceResolver(SubService.READ_CONTENT))
+                .thenReturn(resourceResolver);
+        when(request.getParameter(OFFER_PRODUCT_ID_QUERY_PARAM)).thenReturn(offerProductId);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        prepareWriter(out);
+
+        try (MockedStatic<OfferProductUtil> mockedStatic =
+                     Mockito.mockStatic(OfferProductUtil.class)) {
+
+            mockedStatic.when(() ->
+                            OfferProductUtil.getMpcCodeList(offerProductId, resourceResolver))
+                    .thenReturn(mpcCodes);
+
+            servlet.doGet(request, response);
+
+            mockedStatic.verify(() ->
+                    OfferProductUtil.getMpcCodeList(offerProductId, resourceResolver));
+
+            String json = out.toString();
+            assertEquals(new JSONArray(mpcCodes).toString(), json.trim());
+        }
+    }
+
+    @Test
+    public void testDoGet_withValidOfferProductId_emptyList_returnsEmptyJsonArray()
+            throws Exception {
+
         String offerProductId = "some-id";
 
-        // resourceResolver returns a resource, but adaptTo returns null
-        when(resourceResolver.getResource(anyString())).thenReturn(resource);
-        when(resource.adaptTo(OfferProductOptimized.class)).thenReturn(null);
+        when(resourceResolvers.getResourceResolver(SubService.READ_CONTENT))
+                .thenReturn(resourceResolver);
+        when(request.getParameter(OFFER_PRODUCT_ID_QUERY_PARAM)).thenReturn(offerProductId);
 
-        // call method under test
-        List<String> result =
-                OfferProductUtil.getMpcCodeList(offerProductId, resourceResolver);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        prepareWriter(out);
 
-        // assertions
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
+        try (MockedStatic<OfferProductUtil> mockedStatic =
+                     Mockito.mockStatic(OfferProductUtil.class)) {
+
+            mockedStatic.when(() ->
+                            OfferProductUtil.getMpcCodeList(offerProductId, resourceResolver))
+                    .thenReturn(Collections.emptyList());
+
+            servlet.doGet(request, response);
+
+            String json = out.toString().trim();
+            assertEquals("[]", json);
+        }
+    }
+
+    @Test
+    public void testDoGet_withoutQueryParam_returnsBadRequest() throws Exception {
+
+        when(resourceResolvers.getResourceResolver(SubService.READ_CONTENT))
+                .thenReturn(resourceResolver);
+        when(request.getParameter(OFFER_PRODUCT_ID_QUERY_PARAM)).thenReturn(null);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        prepareWriter(out);
+
+        servlet.doGet(request, response);
+
+        String body = out.toString().trim();
+        assertTrue(body.contains("No query parameter found"));
+        verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
     }
 }
