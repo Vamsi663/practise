@@ -1,67 +1,86 @@
-(function ($, $document, author) {
-    "use strict";
+package com.bcuspublic.wcm.service.offerproduct;
 
-    $document.on("foundation-contentloaded", function (e) {
-        Coral.commons.ready(this, function (el) {
-            var $textField = $(".bcusReadOnlyDialogField");
-            $textField.prop("readonly", true);
-            $textField.attr("readonly", true);
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
-            // Remove Delete Button if needed
-            $(".bcus-hide-multifield-delete button.js-coral-Multifield-remove.coral-Multifield-remove").remove(); // remove coral2 delete icon
-            $(".bcus-hide-multifield-delete button.coral3-Button.coral3-Button--quiet.coral3-Multifield-remove").remove(); // remove coral3 delete icon
+import java.util.Arrays;
+import java.util.List;
 
-            $(".vanity-url-delete .coral3-Multifield-item button.coral3-Button.coral3-Multifield-remove").remove();
-            $(".deleteVanityUrlAssociation button.coral3-Multifield-remove").click(function () {
-                if ($(this).parent().find("input.primaryOfferProductId").length) {
-                    var offerProdId = $(this).parent().find("input.primaryOfferProductId").val();
+import org.apache.sling.api.resource.Resource;
+import org.apache.sling.api.resource.ResourceResolver;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 
-                    //Delete Vanity Url
-                    $("input[name='./sling:vanityPath']").each(function () {
-                        if (this.value.indexOf(offerProdId) !== -1) {
-                            $(this).parent().closest("coral-multifield-item").remove();
-                            $(this).parent().closest("li").remove(); // remove coral2 vanity-url field
-                        }
-                    });
+// Adjust imports to your actual classes / packages
+// import com.bcuspublic.wcm.models.offerproduct.OfferProductOptimized;
+// import com.bcuspublic.wcm.models.offerproduct.MomProductCode;
 
-                    // --- extra MPC logic (added, original code above unchanged) ---
-                    if ($("input[name='./sling:vanityPath']").length === 0) {
-                        return;
-                    }
+@RunWith(MockitoJUnitRunner.class)
+public class OfferProductUtilTest {
 
-                    $.ajax({
-                        url: "/bin/bcuspublic/offerproductmpccodes",
-                        type: "GET",
-                        dataType: "json",
-                        data: {
-                            offerProductId: offerProdId
-                        }
-                    }).done(function (mpcCodes) {
+    @Mock
+    private ResourceResolver resourceResolver;
 
-                        if (!mpcCodes || !mpcCodes.length) {
-                            return;
-                        }
+    @Mock
+    private Resource resource;
 
-                        var mpcSet = new Set(mpcCodes);
+    @Mock
+    private OfferProductOptimized offerProductData;
 
-                        $("input[name='./sling:vanityPath']").each(function () {
-                            var vanity = this.value || "";
-                            var idx = vanity.lastIndexOf("/");
-                            var lastSeg = (idx === -1) ? vanity : vanity.substring(idx + 1);
+    @Mock
+    private MomProductCode momProductCode1;
 
-                            if (mpcSet.has(lastSeg)) {
-                                $(this).parent().closest("coral-multifield-item").remove();
-                                $(this).parent().closest("li").remove();
-                            }
-                        });
-                    });
-                }
-            });
+    @Mock
+    private MomProductCode momProductCode2;
 
-            // Remove Add Button
-            $(".bcus-hide-multifield-add button.js-coral-Multifield-add.coral-Multifield-add.coral-Button").remove();
-            $(".bcus-hide-multifield-add button.coral3-Button.coral3-Button--secondary").remove();
-        });
-    });
+    @Test
+    public void testGetMpcCodeList_returnsCodesWhenPresent() {
+        String offerProductId = "ff64552f-5119-42ef-9485-656d1ad239e19";
 
-})(jQuery, jQuery(document), Granite.author);
+        // resourceResolver.getResource(...) -> resource
+        when(resourceResolver.getResource(anyString())).thenReturn(resource);
+
+        // resource.adaptTo(OfferProductOptimized.class) -> offerProductData
+        when(resource.adaptTo(OfferProductOptimized.class)).thenReturn(offerProductData);
+
+        // offerProductData.getMomProductCodeVO() -> list with one null in between
+        List<MomProductCode> momCodes =
+                Arrays.asList(momProductCode1, null, momProductCode2);
+        when(offerProductData.getMomProductCodeVO()).thenReturn(momCodes);
+
+        // Mom product codes
+        when(momProductCode1.getMomProductCode()).thenReturn("mpc1");
+        when(momProductCode2.getMomProductCode()).thenReturn("mpc2");
+
+        // call method under test
+        List<String> result =
+                OfferProductUtil.getMpcCodeList(offerProductId, resourceResolver);
+
+        // assertions
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals(Arrays.asList("mpc1", "mpc2"), result);
+    }
+
+    @Test
+    public void testGetMpcCodeList_returnsEmptyWhenNoOfferProductData() {
+        String offerProductId = "some-id";
+
+        // resourceResolver returns a resource, but adaptTo returns null
+        when(resourceResolver.getResource(anyString())).thenReturn(resource);
+        when(resource.adaptTo(OfferProductOptimized.class)).thenReturn(null);
+
+        // call method under test
+        List<String> result =
+                OfferProductUtil.getMpcCodeList(offerProductId, resourceResolver);
+
+        // assertions
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+}
