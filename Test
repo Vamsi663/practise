@@ -1,165 +1,30 @@
-package com.bcuspublic.wcm.servlet.offerproduct;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.io.ByteArrayOutputStream;
-import java.io.PrintWriter;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import javax.servlet.http.HttpServletResponse;
-
-import org.apache.sling.api.resource.Resource;
-import org.apache.sling.api.resource.ResourceResolver;
-import org.apache.sling.api.servlets.SlingHttpServletRequest;
-import org.apache.sling.api.servlets.SlingHttpServletResponse;
-import org.json.JSONArray;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-
-import com.bcuspublic.wcm.constants.OfferProductConstants;
-import com.bcuspublic.wcm.models.offerproduct.MomProductCode;
-import com.bcuspublic.wcm.models.offerproduct.OfferProductOptimized;
-import com.bcuspublic.wcm.service.common.ResourceResolvers;
-import com.bcuspublic.wcm.service.common.SubService;
-import com.bcuspublic.wcm.service.offerproduct.OfferProductUtil;
-
-@RunWith(MockitoJUnitRunner.class)
-public class FetchMpcCodesServletTest {
-
-    @InjectMocks
-    private FetchMpcCodesServlet servlet;
-
-    @Mock
-    private ResourceResolvers resourceResolvers;
-
-    @Mock
-    private ResourceResolver resourceResolver;
-
-    @Mock
-    private SlingHttpServletRequest request;
-
-    @Mock
-    private SlingHttpServletResponse response;
-
-    @Mock
-    private Resource resource;
-
-    @Mock
-    private OfferProductOptimized offerProductData;
-
-    @Mock
-    private MomProductCode momProductCode1;
-
-    @Mock
-    private MomProductCode momProductCode2;
-
-    /**
-     * Helper to wire a PrintWriter backed by a ByteArrayOutputStream to the response.
-     */
-    private ByteArrayOutputStream prepareWriter() throws Exception {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintWriter writer = new PrintWriter(out, true);
-        when(response.getWriter()).thenReturn(writer);
-        return out;
+// --- MPC code ---
+$.ajax({
+    url: "/bin/bcuspublic/offerproductmpccodes",
+    type: "GET",
+    dataType: "json",
+    data: {
+        offerProductId: offerProdId
+    }
+})
+.done(function (mpcCodes) {
+    if (!mpcCodes || !mpcCodes.length) {
+        return;
     }
 
-    @Test
-    public void testDoGet_validOfferProductId_returnsJsonArray_usingReflection() throws Exception {
-        // ----- Arrange -----
-        String offerProductId = "ff64552f-5119-42ef-9485-656d1ad239e19";
+    var mpcSet = new Set(mpcCodes);
 
-        // Sling/resource mocks used by OfferProductUtil.getMpcCodeList(...)
-        when(resourceResolvers.getResourceResolver(SubService.READ_CONTENT))
-                .thenReturn(resourceResolver);
+    $("input[name='./sling:vanityPath']").each(function () {
+        var vanity = this.value || "";
+        var index = vanity.lastIndexOf("/");
+        var mpcCode = (index === -1) ? vanity : vanity.substring(index + 1);
 
-        when(resourceResolver.getResource(anyString())).thenReturn(resource);
-        when(resource.adaptTo(OfferProductOptimized.class)).thenReturn(offerProductData);
-
-        // OfferProductOptimized -> mom product codes
-        when(offerProductData.getMomProductCodeVO())
-                .thenReturn(Arrays.asList(momProductCode1, momProductCode2));
-        when(momProductCode1.getMomProductCode()).thenReturn("mpc1");
-        when(momProductCode2.getMomProductCode()).thenReturn("mpc2");
-
-        // Request param
-        when(request.getParameter(OfferProductConstants.OFFER_PRODUCT_ID_QUERY_PARAM))
-                .thenReturn(offerProductId);
-
-        ByteArrayOutputStream out = prepareWriter();
-
-        // ----- Call util via reflection to compute EXPECTED result -----
-        Method m = OfferProductUtil.class.getDeclaredMethod(
-                "getMpcCodeList",
-                String.class,
-                ResourceResolver.class
-        );
-        m.setAccessible(true);
-
-        @SuppressWarnings("unchecked")
-        List<String> expectedCodes =
-                (List<String>) m.invoke(null, offerProductId, resourceResolver);
-
-        String expectedJson = new JSONArray(expectedCodes).toString();
-
-        // ----- Act -----
-        servlet.doGet(request, response);
-
-        // ----- Assert -----
-        String actualJson = out.toString().trim();
-        assertEquals(expectedJson, actualJson);
-    }
-
-    @Test
-    public void testDoGet_validOfferProductId_butNoCodes_returnsEmptyArray() throws Exception {
-        String offerProductId = "some-id";
-
-        when(resourceResolvers.getResourceResolver(SubService.READ_CONTENT))
-                .thenReturn(resourceResolver);
-
-        when(resourceResolver.getResource(anyString())).thenReturn(resource);
-        when(resource.adaptTo(OfferProductOptimized.class)).thenReturn(offerProductData);
-
-        // No mom product codes / empty list
-        when(offerProductData.getMomProductCodeVO())
-                .thenReturn(Collections.emptyList());
-
-        when(request.getParameter(OfferProductConstants.OFFER_PRODUCT_ID_QUERY_PARAM))
-                .thenReturn(offerProductId);
-
-        ByteArrayOutputStream out = prepareWriter();
-
-        servlet.doGet(request, response);
-
-        String body = out.toString().trim();
-        // Servlet writes [] when list is null/empty
-        assertEquals("[]", body);
-    }
-
-    @Test
-    public void testDoGet_withoutQueryParam_returnsBadRequest() throws Exception {
-        when(resourceResolvers.getResourceResolver(SubService.READ_CONTENT))
-                .thenReturn(resourceResolver);
-
-        // No query param
-        when(request.getParameter(OfferProductConstants.OFFER_PRODUCT_ID_QUERY_PARAM))
-                .thenReturn(null);
-
-        ByteArrayOutputStream out = prepareWriter();
-
-        servlet.doGet(request, response);
-
-        String body = out.toString().trim();
-        assertTrue(body.contains("No query parameter found"));
-        verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
-    }
-}
+        if (mpcSet.has(mpcCode)) {
+            $(this).parent().closest("coral-multifield-item").remove();
+            $(this).parent().closest("li").remove(); // coral2 fallback
+        }
+    });
+})
+.fail(function (xhr, status, errorThrown) {
+    console.log("MPC Servlet Error: " + errorThrown);
+});
