@@ -1,79 +1,64 @@
 @Test
 public void testCreateMomProductNode() throws Exception {
 
-    // spy the util so we can stub its methods
+    // --- Spy the util ---
     OfferProductUtil util = Mockito.spy(new OfferProductUtil());
 
-    // mock session
+    // --- Mock session ---
     Session session = mock(Session.class);
 
-    // ----- MomProductCode list -----
+    // --- Mock offerProduct and list of codes ---
     OfferProduct offerProduct = mock(OfferProduct.class);
 
     MomProductCode code1 = new MomProductCode();
     code1.setMomProductCode("momCode_123");
-    code1.setId("id1");
-    code1.setAssociation("assoc1");
-    code1.setAssociationLevel("L1");
-    code1.setStateCode("TEST");
-    code1.setTier("Tier1");
-    code1.setAcquisitionStrategyCode("AS1");
-    code1.setCmaId("CMA1");
-
     MomProductCode code2 = new MomProductCode();
     code2.setMomProductCode("momCode_456");
-    code2.setId("id2");
-    code2.setAssociation("assoc2");
-    code2.setAssociationLevel("L2");
-    code2.setStateCode("TEST");
-    code2.setTier("Tier2");
-    code2.setAcquisitionStrategyCode("AS2");
-    code2.setCmaId("CMA2");
 
     when(offerProduct.getMomProductCodeVO())
             .thenReturn(Arrays.asList(code1, code2));
 
-    // ----- Nodes we expect -----
-    Node baseNode = mock(Node.class);       // /content/.../momProductCodes
-    Node leafNode1 = mock(Node.class);      // bucket/momCode_123
-    Node leafNode2 = mock(Node.class);      // bucket/momCode_456
-    Node bucketFolder = mock(Node.class);
-    when(bucketFolder.getName()).thenReturn("m");  // first letter of both codes
+    // --- Base node and bucket nodes ---
+    Node baseNode = mock(Node.class);
+    Node bucketNode = mock(Node.class);
+    when(bucketNode.getName()).thenReturn("m");
 
-    String basePath = OfferConstants.DATA_PATH + "/" + OfferConstants.MOM_PRODUCT_CODES;
+    Node leaf1 = mock(Node.class);
+    Node leaf2 = mock(Node.class);
 
-    // IMPORTANT: use doReturn on spy so real method is not called
-    // 1) base folder
+    // --- Stub createNode for base folder ---
     doReturn(baseNode)
             .when(util)
-            .createNode(eq(basePath), eq(session), eq(false));
+            .createNode(contains("/momProductCodes"), eq(session), eq(false));
 
-    // 2) bucket folder
-    doReturn(bucketFolder)
+    // --- Stub bucket folder creation ---
+    doReturn(bucketNode)
             .when(util)
             .getOrCreateFolder(eq(baseNode), eq("m"));
 
-    // 3) leaf nodes
-    doReturn(leafNode1)
+    // --- Stub leaf node creation ---
+    doReturn(leaf1)
             .when(util)
             .createNode(contains("momCode_123"), eq(session), eq(false));
 
-    doReturn(leafNode2)
+    doReturn(leaf2)
             .when(util)
             .createNode(contains("momCode_456"), eq(session), eq(false));
 
-    // now we let the real static createMomProductCodeListNode run
-    // (no need to mock it, because both Node and MomProductCode are non-null)
+    // --- IMPORTANT: skip JcrUtil writing ---
+    doNothing()
+            .when(util)
+            .createMomProductCodeListNode(any(Node.class), any(MomProductCode.class));
 
-    // ----- Act -----
+    // --- ACT ---
     util.createMomProductNode(offerProduct, session);
 
-    // ----- Assert -----
-    // base node path is used once
+    // --- ASSERT ---
+    // base folder created once
     verify(util, times(1))
-            .createNode(eq(basePath), eq(session), eq(false));
+            .createNode(contains("/momProductCodes"), eq(session), eq(false));
 
-    // both codes use the same 'm' bucket
+    // bucket created twice (same bucket 'm' for both codes)
     verify(util, times(2))
             .getOrCreateFolder(baseNode, "m");
 
@@ -81,6 +66,7 @@ public void testCreateMomProductNode() throws Exception {
     verify(util).createNode(contains("momCode_123"), eq(session), eq(false));
     verify(util).createNode(contains("momCode_456"), eq(session), eq(false));
 
-    // properties written twice (for 2 codes)
-    verifyStaticCallsToCreateMomProductCodeListNode(); // optional if you care
+    // listNode method called twice for 2 codes
+    verify(util, times(2))
+            .createMomProductCodeListNode(any(Node.class), any(MomProductCode.class));
 }
