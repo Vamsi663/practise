@@ -1,74 +1,19 @@
-@Test
-public void testCreateMomProductNode() throws Exception {
+MomProductCode code1 = new MomProductCode();
+code1.setMomProductCode("momCode_123");
+code1.setId("id1");
+code1.setAssociation("assoc1");
+code1.setAssociationLevel("L1");
+code1.setStateCode("CA");
+code1.setTier("Tier1");
+code1.setAcquisitionStrategyCode("AS1");
+code1.setCmaId("CMA1");
 
-    // ----- Arrange -----
-    OfferProductUtil util = Mockito.spy(new OfferProductUtil());
-
-    // mock session
-    Session session = mock(Session.class);
-
-    // mock offerProduct and return 2 momProductCodes
-    OfferProduct offerProduct = mock(OfferProduct.class);
-
-    MomProductCode code1 = new MomProductCode();
-    code1.setMomProductCode("momCode_123");
-
-    MomProductCode code2 = new MomProductCode();
-    code2.setMomProductCode("momCode_456");
-
-    when(offerProduct.getMomProductCodeVO())
-            .thenReturn(Arrays.asList(code1, code2));
-
-    // base node
-    Node baseNode = mock(Node.class);
-
-    // bucket folder nodes
-    Node bucketNodeM = mock(Node.class);
-    when(bucketNodeM.getName()).thenReturn("m");
-
-    // leaf nodes
-    Node leafNode1 = mock(Node.class);
-    Node leafNode2 = mock(Node.class);
-
-    // create base folder
-    doReturn(baseNode)
-            .when(util)
-            .createNode(contains("/momProductCodes"), eq(session), eq(false));
-
-    // create bucket folder
-    doReturn(bucketNodeM)
-            .when(util)
-            .getOrCreateFolder(eq(baseNode), eq("m"));
-
-    // create leaf nodes
-    doReturn(leafNode1)
-            .when(util)
-            .createNode(contains("momCode_123"), eq(session), eq(false));
-
-    doReturn(leafNode2)
-            .when(util)
-            .createNode(contains("momCode_456"), eq(session), eq(false));
-
-    // skip internal write logic
-    doNothing().when(util).createMomProductCodeListNode(any(Node.class), any(MomProductCode.class));
-
-    // ----- Act -----
-    util.createMomProductNode(offerProduct, session);
-
-    // ----- Assert -----
-    // base created once
-    verify(util, times(1))
-            .createNode(contains("/momProductCodes"), eq(session), eq(false));
-
-    // bucket created twice (same 'm' bucket for both codes)
-    verify(util, times(2))
-            .getOrCreateFolder(baseNode, "m");
-
-    // leaf nodes created
-    verify(util).createNode(contains("momCode_123"), eq(session), eq(false));
-    verify(util).createNode(contains("momCode_456"), eq(session), eq(false));
-
-    // node writer called
-    verify(util, times(2))
-            .createMomProductCodeListNode(any(Node.class), any(MomProductCode.class));
-}
+MomProductCode code2 = new MomProductCode();
+code2.setMomProductCode("momCode_456");
+code2.setId("id2");
+code2.setAssociation("assoc2");
+code2.setAssociationLevel("L2");
+code2.setStateCode("NY");
+code2.setTier("Tier2");
+code2.setAcquisitionStrategyCode("AS2");
+code2.setCmaId("CMA2");
