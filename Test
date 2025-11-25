@@ -1,19 +1,86 @@
-MomProductCode code1 = new MomProductCode();
-code1.setMomProductCode("momCode_123");
-code1.setId("id1");
-code1.setAssociation("assoc1");
-code1.setAssociationLevel("L1");
-code1.setStateCode("CA");
-code1.setTier("Tier1");
-code1.setAcquisitionStrategyCode("AS1");
-code1.setCmaId("CMA1");
+@Test
+public void testCreateMomProductNode() throws Exception {
 
-MomProductCode code2 = new MomProductCode();
-code2.setMomProductCode("momCode_456");
-code2.setId("id2");
-code2.setAssociation("assoc2");
-code2.setAssociationLevel("L2");
-code2.setStateCode("NY");
-code2.setTier("Tier2");
-code2.setAcquisitionStrategyCode("AS2");
-code2.setCmaId("CMA2");
+    // spy the util so we can stub its methods
+    OfferProductUtil util = Mockito.spy(new OfferProductUtil());
+
+    // mock session
+    Session session = mock(Session.class);
+
+    // ----- MomProductCode list -----
+    OfferProduct offerProduct = mock(OfferProduct.class);
+
+    MomProductCode code1 = new MomProductCode();
+    code1.setMomProductCode("momCode_123");
+    code1.setId("id1");
+    code1.setAssociation("assoc1");
+    code1.setAssociationLevel("L1");
+    code1.setStateCode("TEST");
+    code1.setTier("Tier1");
+    code1.setAcquisitionStrategyCode("AS1");
+    code1.setCmaId("CMA1");
+
+    MomProductCode code2 = new MomProductCode();
+    code2.setMomProductCode("momCode_456");
+    code2.setId("id2");
+    code2.setAssociation("assoc2");
+    code2.setAssociationLevel("L2");
+    code2.setStateCode("TEST");
+    code2.setTier("Tier2");
+    code2.setAcquisitionStrategyCode("AS2");
+    code2.setCmaId("CMA2");
+
+    when(offerProduct.getMomProductCodeVO())
+            .thenReturn(Arrays.asList(code1, code2));
+
+    // ----- Nodes we expect -----
+    Node baseNode = mock(Node.class);       // /content/.../momProductCodes
+    Node leafNode1 = mock(Node.class);      // bucket/momCode_123
+    Node leafNode2 = mock(Node.class);      // bucket/momCode_456
+    Node bucketFolder = mock(Node.class);
+    when(bucketFolder.getName()).thenReturn("m");  // first letter of both codes
+
+    String basePath = OfferConstants.DATA_PATH + "/" + OfferConstants.MOM_PRODUCT_CODES;
+
+    // IMPORTANT: use doReturn on spy so real method is not called
+    // 1) base folder
+    doReturn(baseNode)
+            .when(util)
+            .createNode(eq(basePath), eq(session), eq(false));
+
+    // 2) bucket folder
+    doReturn(bucketFolder)
+            .when(util)
+            .getOrCreateFolder(eq(baseNode), eq("m"));
+
+    // 3) leaf nodes
+    doReturn(leafNode1)
+            .when(util)
+            .createNode(contains("momCode_123"), eq(session), eq(false));
+
+    doReturn(leafNode2)
+            .when(util)
+            .createNode(contains("momCode_456"), eq(session), eq(false));
+
+    // now we let the real static createMomProductCodeListNode run
+    // (no need to mock it, because both Node and MomProductCode are non-null)
+
+    // ----- Act -----
+    util.createMomProductNode(offerProduct, session);
+
+    // ----- Assert -----
+    // base node path is used once
+    verify(util, times(1))
+            .createNode(eq(basePath), eq(session), eq(false));
+
+    // both codes use the same 'm' bucket
+    verify(util, times(2))
+            .getOrCreateFolder(baseNode, "m");
+
+    // leaf nodes created
+    verify(util).createNode(contains("momCode_123"), eq(session), eq(false));
+    verify(util).createNode(contains("momCode_456"), eq(session), eq(false));
+
+    // properties written twice (for 2 codes)
+    verifyStaticCallsToCreateMomProductCodeListNode(); // optional if you care
+}
