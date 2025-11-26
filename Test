@@ -1,35 +1,66 @@
 @Test
-public void testCreateMomProductCodeListNode() throws Exception {
-    // --- Arrange ---
+public void testCreateMomProductNode_BucketPath() throws Exception {
 
-    // Get a real JCR Node from SlingContext
-    Session session = context.resourceResolver().adaptTo(Session.class);
-    Node root = session.getRootNode();
-    Node momProductCodeNode = root.addNode("testMomProductCode", "nt:unstructured");
+    // spy so we can stub createNode / getOrCreateFolder
+    OfferProductUtil util = Mockito.spy(new OfferProductUtil());
+    Session session = mock(Session.class);
+    OfferProduct offerProduct = mock(OfferProduct.class);
 
-    // Build a real MomProductCode with all fields
-    MomProductCode code = new MomProductCode();
-    code.setId("id1");
-    code.setAssociation("assoc1");
-    code.setAssociationLevel("L1");
-    code.setStateCode("CA");
-    code.setTier("Tier1");
-    code.setMomProductCode("momCode_123");
-    code.setAcquisitionStrategyCode("AS1");
-    code.setCmaId("CMA1");
+    // two mom product codes starting with 'm'
+    MomProductCode code1 = new MomProductCode();
+    code1.setMomProductCode("momCode_123");
+    MomProductCode code2 = new MomProductCode();
+    code2.setMomProductCode("momCode_456");
+    when(offerProduct.getMomProductCodeVO())
+            .thenReturn(Arrays.asList(code1, code2));
 
-    // --- Act ---
-    OfferProductUtil.createMomProductCodeListNode(momProductCodeNode, code);
+    // base node and bucket / leaf nodes
+    Node baseNode   = mock(Node.class);
+    Node bucketNode = mock(Node.class);
+    Node leaf1      = mock(Node.class);
+    Node leaf2      = mock(Node.class);
+    when(bucketNode.getName()).thenReturn("m");
 
-    // --- Assert ---
-    assertEquals("id1",  momProductCodeNode.getProperty("id").getString());
-    assertEquals("assoc1", momProductCodeNode.getProperty("association").getString());
-    assertEquals("L1",   momProductCodeNode.getProperty("associationLevel").getString());
-    assertEquals("CA",   momProductCodeNode.getProperty("stateCode").getString());
-    assertEquals("Tier1",momProductCodeNode.getProperty("tier").getString());
-    assertEquals("momCode_123",
-                 momProductCodeNode.getProperty("momProductCode").getString());
-    assertEquals("AS1",
-                 momProductCodeNode.getProperty("acquisitionStrategyCode").getString());
-    assertEquals("CMA1", momProductCodeNode.getProperty("cmaId").getString());
+    String basePath = OfferConstants.DATA_PATH + "/" + OfferConstants.MOM_PRODUCT_CODES;
+
+    // base folder
+    doReturn(baseNode)
+            .when(util)
+            .createNode(eq(basePath), eq(session), eq(false));
+
+    // bucket folder
+    doReturn(bucketNode)
+            .when(util)
+            .getOrCreateFolder(baseNode, "m");
+
+    // leaf nodes
+    doReturn(leaf1)
+            .when(util)
+            .createNode(eq(basePath + "/m/momCode_123"), eq(session), eq(false));
+    doReturn(leaf2)
+            .when(util)
+            .createNode(eq(basePath + "/m/momCode_456"), eq(session), eq(false));
+
+    // IMPORTANT: skip the static method so JcrUtil is never invoked
+    PowerMockito.mockStatic(OfferProductUtil.class);
+    PowerMockito.doNothing().when(OfferProductUtil.class,
+            "createMomProductCodeListNode",
+            any(Node.class),
+            any(MomProductCode.class));
+
+    // Act
+    util.createMomProductNode(offerProduct, session);
+
+    // Assert base path and bucket usage
+    verify(util, times(1))
+            .createNode(eq(basePath), eq(session), eq(false));
+
+    verify(util, times(2))
+            .getOrCreateFolder(baseNode, "m");
+
+    verify(util).createNode(eq(basePath + "/m/momCode_123"), eq(session), eq(false));
+    verify(util).createNode(eq(basePath + "/m/momCode_456"), eq(session), eq(false));
+
+    PowerMockito.verifyStatic(OfferProductUtil.class, times(2));
+    OfferProductUtil.createMomProductCodeListNode(any(Node.class), any(MomProductCode.class));
 }
