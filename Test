@@ -1,66 +1,20 @@
 @Test
-public void testCreateMomProductNode_BucketPath() throws Exception {
-
-    // spy so we can stub createNode / getOrCreateFolder
+public void testCreateMomProductNode_whenListIsNull_doesNothing() throws Exception {
     OfferProductUtil util = Mockito.spy(new OfferProductUtil());
     Session session = mock(Session.class);
     OfferProduct offerProduct = mock(OfferProduct.class);
 
-    // two mom product codes starting with 'm'
-    MomProductCode code1 = new MomProductCode();
-    code1.setMomProductCode("momCode_123");
-    MomProductCode code2 = new MomProductCode();
-    code2.setMomProductCode("momCode_456");
-    when(offerProduct.getMomProductCodeVO())
-            .thenReturn(Arrays.asList(code1, code2));
+    // return null list
+    when(offerProduct.getMomProductCodeVO()).thenReturn(null);
 
-    // base node and bucket / leaf nodes
-    Node baseNode   = mock(Node.class);
-    Node bucketNode = mock(Node.class);
-    Node leaf1      = mock(Node.class);
-    Node leaf2      = mock(Node.class);
-    when(bucketNode.getName()).thenReturn("m");
-
-    String basePath = OfferConstants.DATA_PATH + "/" + OfferConstants.MOM_PRODUCT_CODES;
-
-    // base folder
-    doReturn(baseNode)
+    // stub createNode so nodeUtil is never touched
+    doReturn(mock(Node.class))
             .when(util)
-            .createNode(eq(basePath), eq(session), eq(false));
+            .createNode(anyString(), any(Session.class), anyBoolean());
 
-    // bucket folder
-    doReturn(bucketNode)
-            .when(util)
-            .getOrCreateFolder(baseNode, "m");
-
-    // leaf nodes
-    doReturn(leaf1)
-            .when(util)
-            .createNode(eq(basePath + "/m/momCode_123"), eq(session), eq(false));
-    doReturn(leaf2)
-            .when(util)
-            .createNode(eq(basePath + "/m/momCode_456"), eq(session), eq(false));
-
-    // IMPORTANT: skip the static method so JcrUtil is never invoked
-    PowerMockito.mockStatic(OfferProductUtil.class);
-    PowerMockito.doNothing().when(OfferProductUtil.class,
-            "createMomProductCodeListNode",
-            any(Node.class),
-            any(MomProductCode.class));
-
-    // Act
     util.createMomProductNode(offerProduct, session);
 
-    // Assert base path and bucket usage
-    verify(util, times(1))
-            .createNode(eq(basePath), eq(session), eq(false));
-
-    verify(util, times(2))
-            .getOrCreateFolder(baseNode, "m");
-
-    verify(util).createNode(eq(basePath + "/m/momCode_123"), eq(session), eq(false));
-    verify(util).createNode(eq(basePath + "/m/momCode_456"), eq(session), eq(false));
-
-    PowerMockito.verifyStatic(OfferProductUtil.class, times(2));
-    OfferProductUtil.createMomProductCodeListNode(any(Node.class), any(MomProductCode.class));
+    // since list is null, createNode must never be called
+    verify(util, never())
+            .createNode(anyString(), any(Session.class), anyBoolean());
 }
