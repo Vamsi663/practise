@@ -1,20 +1,60 @@
-@Test
-public void testCreateMomProductNode_whenListIsNull_doesNothing() throws Exception {
-    OfferProductUtil util = Mockito.spy(new OfferProductUtil());
-    Session session = mock(Session.class);
-    OfferProduct offerProduct = mock(OfferProduct.class);
+(function ($) {
+  "use strict";
 
-    // return null list
-    when(offerProduct.getMomProductCodeVO()).thenReturn(null);
+  window.EAEM = window.EAEM || {};
 
-    // stub createNode so nodeUtil is never touched
-    doReturn(mock(Node.class))
-            .when(util)
-            .createNode(anyString(), any(Session.class), anyBoolean());
+  // Called from eaem-show-on-collapse
+  EAEM.showSchumerRowTitle = function (fields) {
+    var title = (fields["./title"] || "").trim();
+    return title || "Click to expand";
+  };
 
-    util.createMomProductNode(offerProduct, session);
+  function collectFields($item) {
+    var fields = {};
+    $item.find("input[name], select[name], textarea[name]").each(function () {
+      var $f = $(this);
+      fields[$f.attr("name")] = ($f.val() || "").toString();
+    });
+    return fields;
+  }
 
-    // since list is null, createNode must never be called
-    verify(util, never())
-            .createNode(anyString(), any(Session.class), anyBoolean());
-}
+  function initMultifield($mf) {
+    var fnName = $mf.attr("eaem-show-on-collapse");
+    if (!fnName) return;
+
+    var fn = fnName.split(".").reduce(function (o, k) { return o && o[k]; }, window);
+    if (typeof fn !== "function") return;
+
+    $mf.find(".coral-Multifield-item").each(function () {
+      var $item = $(this);
+      if ($item.children(".eaem-header").length) return;
+
+      var $header = $('<div class="eaem-header" style="cursor:pointer;font-weight:600;padding:6px 0;"></div>');
+      $item.prepend($header);
+
+      $item.addClass("eaem-collapsed");
+
+      function render() {
+        var fields = collectFields($item);
+        $header.text(fn(fields));
+        $item.children().not(".eaem-header").css("display", $item.hasClass("eaem-collapsed") ? "none" : "");
+      }
+
+      $header.on("click", function () {
+        $item.toggleClass("eaem-collapsed");
+        render();
+      });
+
+      $item.on("input change", 'input[name="./title"]', render);
+
+      render();
+    });
+  }
+
+  $(document).on("foundation-contentloaded", function (e) {
+    $(e.target).find('coral-multifield[eaem-show-on-collapse], .coral-Multifield[eaem-show-on-collapse]').each(function () {
+      initMultifield($(this));
+    });
+  });
+
+})(Granite.$);
