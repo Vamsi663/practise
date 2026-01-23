@@ -1,34 +1,21 @@
-public static List<String> getOfferProductIds(
-            String pagePath,
-            ResourceResolver resourceResolver) {
+@Test
+public void getOfferProductIdTest_mockito() {
+    ResourceResolver resolver = mock(ResourceResolver.class);
+    Resource page = mock(Resource.class);
+    Resource primaryNode = mock(Resource.class);
+    Resource item = mock(Resource.class);
 
-        List<String> offerProductIds = new ArrayList<>();
+    ValueMap valueMap = mock(ValueMap.class);
 
-        if (StringUtils.isBlank(pagePath) || resourceResolver == null) {
-            return offerProductIds;
-        }
+    when(resolver.getResource("/content/page")).thenReturn(page);
+    when(page.getChild("jcr:content/primaryOfferProductIds")).thenReturn(primaryNode);
+    when(primaryNode.listChildren()).thenReturn(Collections.singletonList(item).iterator());
+    when(item.getValueMap()).thenReturn(valueMap);
+    when(valueMap.get("offerProductId", String.class)).thenReturn("offer-1");
 
-        Resource pageResource = resourceResolver.getResource(pagePath);
-        if (pageResource == null) {
-            return offerProductIds;
-        }
+    List<String> result =
+            OfferProductUtil.getOfferProductIds("/content/page", resolver);
 
-        Resource primaryIdsResource = pageResource
-                .getChild(JCR_CONTENT + "/" + PRIMARY_OFFER_PRODUCT_IDS);
-
-        if (primaryIdsResource == null) {
-            return offerProductIds;
-        }
-
-        Iterator<Resource> children = primaryIdsResource.listChildren();
-        while (children.hasNext()) {
-            Resource itemResource = children.next();
-            ValueMap valueMap = itemResource.getValueMap();
-
-            String offerProductId = valueMap.get(OFFER_PRODUCT_ID, String.class);
-            if (StringUtils.isNotBlank(offerProductId)) {
-                offerProductIds.add(offerProductId);
-            }
-        }
-
-        return offerProductIds;
+    assertEquals(1, result.size());
+    assertEquals("offer-1", result.get(0));
+}
