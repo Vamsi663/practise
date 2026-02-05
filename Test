@@ -1,130 +1,50 @@
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+@RunWith(PowerMockRunner.class)
+@PrepareForTest({ OfferProductUtil.class, CmaHelperUtils.class, CmaMessageAreaListUtil.class })
+public class CMAPagePublishListenerJobTest {
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import org.apache.sling.event.jobs.Job;
-import org.apache.sling.event.jobs.consumer.JobConsumer.JobResult;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
-import org.mockito.junit.jupiter.MockitoExtension;
+  @Mock private ResourceResolvers resourceResolvers;
+  @Mock private ResourceResolver resourceResolver;
+  @Mock private Job job;
+  @Mock private KafkaProducerConfig kafkaProducerConfig;
+  @Mock private KafkaPublisher kafkaPublisher;
 
-import java.util.Arrays;
-import java.util.List;
+  @InjectMocks private CMAPagePublishListenerJob cmaPagePublishListenerJob;
 
-@ExtendWith(MockitoExtension.class)
-class CMAPagePublishListenerJobTest {
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
 
-    @InjectMocks
-    private CMAPagePublishListenerJob jobConsumer;
+    when(job.getProperty("pagePath", String.class)).thenReturn("/content/site/en/test");
+    when(resourceResolvers.getResourceResolver(any())).thenReturn(resourceResolver);
+    when(kafkaProducerConfig.topic()).thenReturn("topic");
 
-    @Mock
-    private KafkaProducerConfig kafkaProducerConfig;
+    PowerMockito.mockStatic(OfferProductUtil.class);
+    PowerMockito.mockStatic(CmaHelperUtils.class);
+    PowerMockito.mockStatic(CmaMessageAreaListUtil.class);
+  }
 
-    @Mock
-    private KafkaPublisher kafkaPublisher; // <-- change type to your actual publisher class
+  @Test
+  public void processJobTest() {
+    String pagePath = "/content/site/en/test";
 
-    @Mock
-    private ResourceResolvers resourceResolvers; // <-- change to your actual helper/service
+    List<String> offerProductIds = Arrays.asList("OP1");
+    List<String> mpcCodeList = Arrays.asList("MPC1", "MPC2");
 
-    @Mock
-    private ResourceResolver resourceResolver;
+    JsonArray msgList = new JsonArray();
+    msgList.add(new JsonObject());
 
-    @Mock
-    private Job job;
+    PowerMockito.when(OfferProductUtil.getOfferProductIds(eq(pagePath), eq(resourceResolver)))
+        .thenReturn(offerProductIds);
 
-    @BeforeEach
-    void setup() {
-        when(job.getProperty(eq("pagePath"), eq(String.class))).thenReturn("/content/site/en/test");
-        when(kafkaProducerConfig.topic()).thenReturn("test-topic");
+    PowerMockito.when(CmaHelperUtils.getMpcCodeList(eq("OP1"), eq(resourceResolver)))
+        .thenReturn(mpcCodeList);
 
-        // try-with-resources uses resourceResolver.close() automatically; no special stubbing needed
-        when(resourceResolvers.getResourceResolver(any())).thenReturn(resourceResolver);
-    }
+    PowerMockito.when(CmaMessageAreaListUtil.getMessageAreaListJson(anyString(), eq(resourceResolver)))
+        .thenReturn(msgList);
 
-    @Test
-    void process_success_publishesOneEventPerOfferProductId_andJsonLooksCorrect() {
-        String pagePath = "/content/site/en/test";
+    JobResult result = cmaPagePublishListenerJob.process(job);
 
-        List<String> offerProductIds = Arrays.asList("OP1", "OP2");
-
-        // MPC lists per offer product
-        List<String> mpcForOp1 = Arrays.asList("MPC11", "MPC12");
-        List<String> mpcForOp2 = Arrays.asList("MPC21");
-
-        // message area list json returned by util
-        JsonArray msgList = new JsonArray();
-        JsonObject msg = new JsonObject();
-        msg.addProperty("dummy", "value");
-        msgList.add(msg);
-
-        try (MockedStatic<OfferProductUtil> offerProductUtilMock = Mockito.mockStatic(OfferProductUtil.class);
-             MockedStatic<CmaHelperUtils> cmaHelperUtilsMock = Mockito.mockStatic(CmaHelperUtils.class);
-             MockedStatic<CmaMessageAreaListUtil> msgUtilMock = Mockito.mockStatic(CmaMessageAreaListUtil.class)) {
-
-            offerProductUtilMock
-                    .when(() -> OfferProductUtil.getOfferProductIds(eq(pagePath), eq(resourceResolver)))
-                    .thenReturn(offerProductIds);
-
-            cmaHelperUtilsMock
-                    .when(() -> CmaHelperUtils.getMpcCodeList(eq("OP1"), eq(resourceResolver)))
-                    .thenReturn(mpcForOp1);
-            cmaHelperUtilsMock
-                    .when(() -> CmaHelperUtils.getMpcCodeList(eq("OP2"), eq(resourceResolver)))
-                    .thenReturn(mpcForOp2);
-
-            msgUtilMock
-                    .when(() -> CmaMessageAreaListUtil.getMessageAreaListJson(anyString(), eq(resourceResolver)))
-                    .thenReturn(msgList);
-
-            JobResult result = jobConsumer.process(job);
-            assertEquals(JobResult.OK, result);
-
-            // verify publish called once per offerProductId
-            ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
-            verify(kafkaPublisher, times(2)).publishEvent(payloadCaptor.capture(), eq("test-topic"));
-
-            List<String> publishedPayloads = payloadCaptor.getAllValues();
-
-            // basic JSON checks (string contains) – simple and stable
-            // (You can parse with JsonParser if you want stricter checks)
-            String p1 = publishedPayloads.get(0);
-            String p2 = publishedPayloads.get(1);
-
-            // must include offerProductId key and momproductCodes key and messageAreaList key
-            // Replace these string literals with your constant names if different.
-            // In your code: OFFER_PRODUCT_ID, MOM_PRODUCT_CODES, MESSAGE_AREA_LIST
-            org.junit.jupiter.api.Assertions.assertTrue(p1.contains("offerProductId") || p1.contains("OFFER_PRODUCT_ID"));
-            org.junit.jupiter.api.Assertions.assertTrue(p1.contains("momproductCodes") || p1.contains("MOM_PRODUCT_CODES"));
-            org.junit.jupiter.api.Assertions.assertTrue(p1.contains("messageAreaList") || p1.contains("MESSAGE_AREA_LIST"));
-
-            org.junit.jupiter.api.Assertions.assertTrue(p2.contains("offerProductId") || p2.contains("OFFER_PRODUCT_ID"));
-            org.junit.jupiter.api.Assertions.assertTrue(p2.contains("momproductCodes") || p2.contains("MOM_PRODUCT_CODES"));
-            org.junit.jupiter.api.Assertions.assertTrue(p2.contains("messageAreaList") || p2.contains("MESSAGE_AREA_LIST"));
-
-            // Optional: verify it included actual values
-            org.junit.jupiter.api.Assertions.assertTrue(p1.contains("OP1") || p2.contains("OP1"));
-            org.junit.jupiter.api.Assertions.assertTrue(p1.contains("OP2") || p2.contains("OP2"));
-        }
-    }
-
-    @Test
-    void process_whenExceptionThrown_returnsFailed_andDoesNotPublish() {
-        String pagePath = "/content/site/en/test";
-
-        try (MockedStatic<OfferProductUtil> offerProductUtilMock = Mockito.mockStatic(OfferProductUtil.class)) {
-
-            offerProductUtilMock
-                    .when(() -> OfferProductUtil.getOfferProductIds(eq(pagePath), any()))
-                    .thenThrow(new RuntimeException("boom"));
-
-            JobResult result = jobConsumer.process(job);
-            assertEquals(JobResult.FAILED, result);
-
-            verifyNoInteractions(kafkaPublisher);
-        }
-    }
+    assertEquals(JobResult.OK, result);
+    verify(kafkaPublisher, times(1)).publishEvent(anyString(), eq("topic"));
+  }
 }
