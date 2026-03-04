@@ -1,107 +1,47 @@
-.mpcWrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 100%;
+.mpcContainer{
+    position:relative;
+    display:flex;
+    align-items:center;
+    width:100%;
 }
 
-.mpcRowInner {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
-  overflow: hidden;   // clip overflow
-  min-width: 0;       // IMPORTANT for table/flex
-  flex: 1 1 auto;
+.mpcRow{
+    display:flex;
+    flex-wrap:nowrap;
+    overflow:hidden;
+    gap:6px;
+    flex:1;
 }
 
-.mpcRowInner .viewMpcCodeDetailsBtn {
-  flex: 0 0 auto;     // ✅ do NOT shrink buttons
-  white-space: nowrap;
+.mpcRow .viewMpcCodeDetailsBtn{
+    flex:0 0 auto;
 }
 
-.mpcDots {
-  display: none;
-  padding-left: 6px;
-  cursor: pointer;    // ✅ user knows it’s hoverable
-  flex: 0 0 auto;
-}
-
-.mpcWrap.hasOverflow .mpcDots {
-  display: inline-block;
+.mpcEllipsis{
+    display:block;
+    cursor:pointer;
+    margin-left:5px;
 }
 
 /* tooltip */
-.mpcTooltip {
-  display: none;
-  position: absolute;
-  top: 100%;
-  right: 0;           // keep it within column area better
-  margin-top: 6px;
-  z-index: 9999;
-  padding: 8px;
-  background: #fff;
-  border: 1px solid #ccc;
-  box-shadow: 0 2px 10px rgba(0,0,0,.15);
-  max-width: 520px;
 
-  /* allow wrapping in tooltip */
-  white-space: normal;
+.mpcTooltip{
+    display:none;
+    position:absolute;
+    top:0;
+    left:100%;
+    margin-left:10px;
+    padding:10px;
+
+    background:#fff;
+    border:1px solid #ccc;
+    box-shadow:0 2px 8px rgba(0,0,0,.2);
+
+    max-width:450px;
+    white-space:normal;
 }
 
-
-
-function initMpcEllipsisAndTooltip() {
-
-  document.querySelectorAll(".mpcWrap").forEach(function (wrap) {
-
-    var inner = wrap.querySelector(".mpcRowInner");
-    var tooltip = wrap.querySelector(".mpcTooltip");
-    var dots = wrap.querySelector(".mpcDots");
-
-    if (!inner || !tooltip || !dots) return;
-
-    // detect overflow
-    var overflowing = inner.scrollWidth > inner.clientWidth + 1;
-    wrap.classList.toggle("hasOverflow", overflowing);
-
-    // tooltip content = ALL buttons
-    tooltip.innerHTML = inner.innerHTML;
-
-    // remove old handlers (avoid duplicates on redraw)
-    dots.onmouseenter = null;
-    dots.onmouseleave = null;
-    tooltip.onmouseenter = null;
-    tooltip.onmouseleave = null;
-
-    // Show ONLY when hovering dots
-    dots.onmouseenter = function () {
-      if (wrap.classList.contains("hasOverflow")) {
-        tooltip.style.display = "block";
-      }
-    };
-
-    // Keep tooltip open if mouse goes from dots -> tooltip
-    dots.onmouseleave = function () {
-      setTimeout(function () {
-        // if user is hovering tooltip, don’t close
-        if (!tooltip.matches(":hover")) {
-          tooltip.style.display = "none";
-        }
-      }, 80);
-    };
-
-    // When hovering tooltip, keep it open
-    tooltip.onmouseenter = function () {
-      tooltip.style.display = "block";
-    };
-
-    // Close when leaving tooltip
-    tooltip.onmouseleave = function () {
-      tooltip.style.display = "none";
-    };
-
-    // Default closed
-    tooltip.style.display = "none";
-  });
-
+.mpcEllipsis:hover + .mpcTooltip,
+.mpcTooltip:hover{
+    display:block;
 }
