@@ -1,50 +1,142 @@
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({ OfferProductUtil.class, CmaHelperUtils.class, CmaMessageAreaListUtil.class })
-public class CMAPagePublishListenerJobTest {
+_buildMpcCodeReferences = function (data) {
+    var mpcCodes = data.mpcCodes && data.mpcCodes instanceof Array ? data.mpcCodes : [];
+    if (mpcCodes.length === 0) return "";
 
-  @Mock private ResourceResolvers resourceResolvers;
-  @Mock private ResourceResolver resourceResolver;
-  @Mock private Job job;
-  @Mock private KafkaProducerConfig kafkaProducerConfig;
-  @Mock private KafkaPublisher kafkaPublisher;
+    // Render all buttons wrapped in a smart container
+    var allButtons = mpcCodes.map(function(mpcCode) {
+        return "<button class='viewMpcCodeDetailsBtn mpc-btn-item'>" + mpcCode + "</button>";
+    }).join("");
 
-  @InjectMocks private CMAPagePublishListenerJob cmaPagePublishListenerJob;
+    var tooltipButtons = mpcCodes.map(function(mpcCode) {
+        return "<button class='viewMpcCodeDetailsBtn'>" + mpcCode + "</button>";
+    }).join("");
 
-  @Before
-  public void setUp() throws Exception {
-    MockitoAnnotations.openMocks(this);
+    return "<div class='mpc-codes-container'>" +
+               "<div class='mpc-visible-area'>" + allButtons + "</div>" +
+               "<span class='mpc-ellipsis' style='display:none;'>" +
+                   "<span class='mpc-ellipsis-dots'>•••</span>" +
+                   "<div class='mpc-tooltip'>" + tooltipButtons + "</div>" +
+               "</span>" +
+           "</div>";
+};
 
-    when(job.getProperty("pagePath", String.class)).thenReturn("/content/site/en/test");
-    when(resourceResolvers.getResourceResolver(any())).thenReturn(resourceResolver);
-    when(kafkaProducerConfig.topic()).thenReturn("topic");
 
-    PowerMockito.mockStatic(OfferProductUtil.class);
-    PowerMockito.mockStatic(CmaHelperUtils.class);
-    PowerMockito.mockStatic(CmaMessageAreaListUtil.class);
-  }
 
-  @Test
-  public void processJobTest() {
-    String pagePath = "/content/site/en/test";
+function initMpcOverflow() {
+    document.querySelectorAll('.mpc-codes-container').forEach(function(container) {
+        var visibleArea = container.querySelector('.mpc-visible-area');
+        var ellipsis = container.querySelector('.mpc-ellipsis');
+        var buttons = visibleArea.querySelectorAll('.mpc-btn-item');
 
-    List<String> offerProductIds = Arrays.asList("OP1");
-    List<String> mpcCodeList = Arrays.asList("MPC1", "MPC2");
+        if (buttons.length === 0) return;
 
-    JsonArray msgList = new JsonArray();
-    msgList.add(new JsonObject());
+        // Reset first
+        buttons.forEach(function(btn) { btn.style.display = ''; });
+        ellipsis.style.display = 'none';
 
-    PowerMockito.when(OfferProductUtil.getOfferProductIds(eq(pagePath), eq(resourceResolver)))
-        .thenReturn(offerProductIds);
+        var containerWidth = container.offsetWidth - 30; // 30px reserved for ellipsis
+        var usedWidth = 0;
+        var overflowIndex = -1;
 
-    PowerMockito.when(CmaHelperUtils.getMpcCodeList(eq("OP1"), eq(resourceResolver)))
-        .thenReturn(mpcCodeList);
+        buttons.forEach(function(btn, i) {
+            usedWidth += btn.offsetWidth + 6; // 6px gap
+            if (usedWidth > containerWidth && overflowIndex === -1) {
+                overflowIndex = i;
+            }
+        });
 
-    PowerMockito.when(CmaMessageAreaListUtil.getMessageAreaListJson(anyString(), eq(resourceResolver)))
-        .thenReturn(msgList);
-
-    JobResult result = cmaPagePublishListenerJob.process(job);
-
-    assertEquals(JobResult.OK, result);
-    verify(kafkaPublisher, times(1)).publishEvent(anyString(), eq("topic"));
-  }
+        if (overflowIndex !== -1) {
+            // Hide buttons that don't fit
+            buttons.forEach(function(btn, i) {
+                if (i >= overflowIndex) {
+                    btn.style.display = 'none';
+                }
+            });
+            ellipsis.style.display = 'inline-flex';
+        }
+    });
 }
+
+// Call after table renders:
+// If using DataTables:
+$('#offerProductTable').on('draw.dt', function() {
+    initMpcOverflow();
+});
+// Also call on page load and window resize:
+$(document).ready(function() { initMpcOverflow(); });
+$(window).on('resize', function() { initMpcOverflow(); });
+
+
+
+
+/* Container: single row, no wrap, clip overflow */
+.mpc-codes-container {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    width: 100%;
+    flex-wrap: nowrap;
+    gap: 4px;
+}
+
+.mpc-visible-area {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.mpc-btn-item {
+    flex-shrink: 0; /* buttons never compress, they just get hidden */
+}
+
+/* Ellipsis pill */
+.mpc-ellipsis {
+    position: relative;
+    flex-shrink: 0;
+    cursor: pointer;
+    align-items: center;
+}
+
+.mpc-ellipsis-dots {
+    font-size: 13px;
+    font-weight: bold;
+    color: #555;
+    padding: 2px 8px;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    background: #f5f5f5;
+    letter-spacing: 2px;
+}
+
+/* Tooltip */
+.mpc-tooltip {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    padding: 10px 12px;
+    min-width: 180px;
+    max-width: 320px;
+    flex-wrap: wrap;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.mpc-ellipsis:hover .mpc-tooltip {
+    display: flex;
+}
+
+.mpc-tooltip .viewMpcCodeDetailsBtn {
+    margin: 2px;
+}
+
+
+
