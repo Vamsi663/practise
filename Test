@@ -1,82 +1,69 @@
-_buildMpcCodeReferences = function (data) {
-  var mpcCodes = (data.mpcCodes && data.mpcCodes instanceof Array) ? data.mpcCodes : [];
+/* container for MPC column */
+.mpcCell {
+    position: relative;
+    width: 100%;
+    max-width: 240px; /* keeps column narrow */
+}
 
-  function esc(s) {
-    return (s == null) ? "" : String(s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
-
-  function link(code) {
-    return "<a href='#' class='viewMpcCodeDetailsBtn mpcLink'>" + esc(code) + "</a>";
-  }
-
-  var allLinks = "";
-  mpcCodes.forEach(function (c) { allLinks += link(c); });
-
-  var visibleLinks = "";
-  mpcCodes.slice(0, 2).forEach(function (c) { visibleLinks += link(c); });
-
-  var hasMore = mpcCodes.length > 2;
-
-  return ""
-    + "<div class='mpcCell'>"
-    + "  <div class='mpcVisible'>" + visibleLinks + "</div>"
-    + (hasMore ? "  <span class='mpcEllipsis'>&hellip;</span>" : "")
-    + (hasMore ? "  <div class='mpcTooltip'>" + allLinks + "</div>" : "")
-    + "</div>";
-};
-
-
-
-.mpcCell { position: relative; width: 100%; }
-
+/* visible MPC links */
 .mpcVisible .mpcLink {
-  display: block;        // ✅ one per line
-  line-height: 18px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding-right: 16px;   // space for …
+    display: block;            /* one per line */
+    line-height: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 16px;       /* space for ellipsis */
 }
 
-/* ellipsis at end of 2nd link line */
+/* ellipsis after second link */
 .mpcEllipsis {
-  position: absolute;
-  right: 0;
-  top: 18px;             // ✅ line-height value (2nd line)
-  cursor: pointer;
-  background: #fff;
-  padding-left: 6px;
+    position: absolute;
+    right: 0;
+    top: 18px;                 /* aligns with 2nd line */
+    cursor: pointer;
+    background: #fff;
+    padding-left: 6px;
+    font-weight: bold;
 }
 
-/* tooltip on right */
+/* tooltip panel */
 .mpcTooltip {
-  display: none;
-  position: absolute;
-  top: 0;
-  left: 100%;
-  margin-left: 10px;
-  z-index: 9999;
-  background: #fff;
-  border: 1px solid #ccc;
-  box-shadow: 0 2px 10px rgba(0,0,0,.15);
-  padding: 10px;
-  min-width: 280px;
-  max-width: 520px;
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 100%;                /* show on right side */
+    margin-left: 10px;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 10px rgba(0,0,0,.15);
+    padding: 10px;
+    min-width: 260px;
+    max-width: 520px;
 }
 
+/* links inside tooltip */
 .mpcTooltip .mpcLink {
-  display: block;        // ✅ one per line in tooltip too
-  line-height: 18px;
-  margin-bottom: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    display: block;
+    line-height: 18px;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-/* show tooltip only on ellipsis hover */
-.mpcEllipsis:hover + .mpcTooltip,
-.mpcTooltip:hover { display: block; }
+/* keep tooltip visible when moving cursor */
+.mpcCell:hover .mpcTooltip {
+    display: block;
+}
 
+/* optional: highlight ellipsis on hover */
+.mpcEllipsis:hover {
+    color: #0070d2;
+}
+
+/* ensure column does not stretch table */
+#offerProductTable td,
+#offerProductTable th {
+    vertical-align: top;
+}
