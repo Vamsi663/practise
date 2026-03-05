@@ -1,4 +1,5 @@
 _buildMpcCodeReferences = function (data) {
+
     var mpcCodes = data.mpcCodes || [];
 
     function link(code) {
@@ -15,17 +16,15 @@ _buildMpcCodeReferences = function (data) {
 
     return ""
         + "<div class='mpcCell'>"
-        +   "<div class='mpcVisible'>"
-        +     visibleMpc
-        +     (moreMpc
-                ? "<span class='mpcEllipsis' tabindex='0' aria-label='Show all MPC codes'>&hellip;</span>"
-                + "<div class='mpcTooltip'>" + allMpc + "</div>"
-                : ""
-          )
-        +   "</div>"
+        + "<div class='mpcVisible" + (moreMpc ? " mpcHasMore" : "") + "'>"
+        + visibleMpc
+        + (moreMpc
+            ? "<span class='mpcEllipsis' tabindex='0' aria-label='Show all MPC codes'>&hellip;</span>"
+            + "<div class='mpcTooltip'>" + allMpc + "</div>"
+            : "")
+        + "</div>"
         + "</div>";
 };
-
 
 /* MPC cell container */
 .mpcCell {
@@ -33,30 +32,36 @@ _buildMpcCodeReferences = function (data) {
   width: 100%;
 }
 
-/* IMPORTANT:
-   Make the visible block shrink-to-content (up to column width),
-   so the ellipsis sits right after the link text area, not at column end */
+/* visible container */
 .mpcVisible {
   position: relative;
   display: inline-block;
   max-width: 100%;
-  padding-right: 20px; /* space reserved for the ellipsis */
 }
 
-/* visible MPC links (two lines max) */
+/* reserve space ONLY when ellipsis exists */
+.mpcVisible.mpcHasMore {
+  padding-right: 20px;
+}
+
+/* visible MPC links */
 .mpcVisible .mpcLink {
   display: block;
   line-height: 18px;
   white-space: nowrap;
+}
+
+/* apply truncation only when more items exist */
+.mpcVisible.mpcHasMore .mpcLink {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* ellipsis (placed at end of 2nd line, relative to .mpcVisible width) */
+/* ellipsis */
 .mpcEllipsis {
   position: absolute;
   right: 0;
-  top: 18px;            /* second line */
+  top: 18px; /* second line */
   cursor: pointer;
   background: #fff;
   padding: 0 6px;
@@ -69,9 +74,9 @@ _buildMpcCodeReferences = function (data) {
 .mpcTooltip {
   display: none;
   position: absolute;
-  top: 18px;           /* align with ellipsis line */
+  top: 18px;
   left: 100%;
-  margin-left: 0;      /* no gap (prevents hover drop) */
+  margin-left: 0;
   z-index: 9999;
   background: #fff;
   border: 1px solid #ccc;
@@ -81,7 +86,7 @@ _buildMpcCodeReferences = function (data) {
   max-width: 520px;
 }
 
-/* links inside tooltip */
+/* tooltip links */
 .mpcTooltip .mpcLink {
   display: block;
   line-height: 18px;
@@ -91,10 +96,11 @@ _buildMpcCodeReferences = function (data) {
   text-overflow: ellipsis;
 }
 
-/* show tooltip ONLY when hovering/focusing ellipsis (and keep it open on tooltip hover) */
+/* show tooltip ONLY when hovering ellipsis */
 .mpcEllipsis:hover + .mpcTooltip,
 .mpcEllipsis:focus + .mpcTooltip,
 .mpcTooltip:hover {
   display: block !important;
 }
+
 
