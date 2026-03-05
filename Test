@@ -1,55 +1,27 @@
-/* container */
-.mpcCell {
-  position: relative;
-  width: 100%;
+.mpcEllipsis {
+  position: absolute;
+  top: 18px;              /* align with 2nd line */
+  left: auto;
+  right: auto;
+  margin-left: 4px;       /* keeps it next to text */
+
+  font-size: 16px;        /* make it visible */
+  font-weight: bold;
+
+  cursor: pointer;
+  background: #fff;
+  padding: 0 4px;
 }
 
-/* visible area (2 links) */
+
 .mpcVisible .mpcLink {
-  display: block;              /* one per line */
+  display: block;
   line-height: 18px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-right: 30px;   /* increased space */
 }
 
-/* ellipsis shown after 2nd link */
-.mpcEllipsis {
-  display: inline-block;
-  margin-left: 4px;
-  cursor: pointer;
-  padding: 0 4px;              /* easier hover */
-  font-weight: bold;
-}
 
-/* tooltip box */
-.mpcTooltip {
-  display: none;
-  position: absolute;
-  top: 18px;                   /* aligns with 2nd line */
-  left: 100%;                  /* to the right of cell content */
-  margin-left: 0;              /* NO GAP (important) */
-  z-index: 9999;
-  background: #fff;
-  border: 1px solid #ccc;
-  box-shadow: 0 2px 10px rgba(0,0,0,.15);
-  padding: 10px;
-  min-width: 260px;
-  max-width: 520px;
-}
 
-/* IMPORTANT: tooltip link style should NOT inherit truncation */
-.mpcTooltip .mpcLink {
-  display: block;              /* one per line in tooltip */
-  line-height: 18px;
-  white-space: normal;         /* allow wrapping if needed */
-  overflow: visible;
-  text-overflow: clip;
-  max-width: none;
-}
-
-/* show tooltip ONLY when hovering ellipsis or tooltip itself */
-.mpcEllipsis:hover + .mpcTooltip,
-.mpcTooltip:hover {
-  display: block;
-}
