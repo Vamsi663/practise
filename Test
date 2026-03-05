@@ -1,30 +1,44 @@
 _buildMpcCodeReferences = function (data) {
+  var mpcCodes = data.mpcCodes || [];
 
-    var mpcCodes = data.mpcCodes || [];
+  function link(code) {
+    return "<a href='#' class='viewMpcCodeDetailsBtn mpcLink'>" + code + "</a>";
+  }
 
-    function link(code) {
-        return "<a href='#' class='viewMpcCodeDetailsBtn mpcLink'>" + code + "</a>";
-    }
+  if (!mpcCodes.length) {
+    return "";
+  }
 
-    if (!mpcCodes.length) {
-        return "";
-    }
+  var visibleMpc = mpcCodes.slice(0, 2);
+  var allMpc = mpcCodes.map(link).join("");
+  var moreMpc = mpcCodes.length > 2;
 
-    var visibleMpc = mpcCodes.slice(0, 2).map(link).join("");
-    var allMpc = mpcCodes.map(link).join("");
-    var moreMpc = mpcCodes.length > 2;
+  // Build 1st line (always)
+  var line1 = "<div class='mpcLine'>" + link(visibleMpc[0]) + "</div>";
 
-    return ""
-        + "<div class='mpcCell'>"
-        + "<div class='mpcVisible" + (moreMpc ? " mpcHasMore" : "") + "'>"
-        + visibleMpc
-        + (moreMpc
-            ? "<span class='mpcEllipsis' tabindex='0' aria-label='Show all MPC codes'>&hellip;</span>"
-            + "<div class='mpcTooltip'>" + allMpc + "</div>"
-            : "")
-        + "</div>"
-        + "</div>";
+  // Build 2nd line (only if we have 2 items)
+  var line2 = "";
+  if (visibleMpc.length > 1) {
+    line2 =
+      "<div class='mpcLine mpcLine2" + (moreMpc ? " mpcHasMore" : "") + "'>" +
+        link(visibleMpc[1]) +
+        (moreMpc
+          ? "<span class='mpcEllipsis' tabindex='0' aria-label='Show all MPC codes'>&hellip;</span>" +
+            "<div class='mpcTooltip'>" + allMpc + "</div>"
+          : "") +
+      "</div>";
+  }
+
+  return "" +
+    "<div class='mpcCell'>" +
+      "<div class='mpcVisible'>" +
+        line1 +
+        line2 +
+      "</div>" +
+    "</div>";
 };
+
+
 
 /* MPC cell container */
 .mpcCell {
@@ -32,36 +46,36 @@ _buildMpcCodeReferences = function (data) {
   width: 100%;
 }
 
-/* visible container */
+/* visible MPC links area */
 .mpcVisible {
+  width: 100%;
+}
+
+/* each visible line should shrink to content (so ellipsis is at link end) */
+.mpcLine {
   position: relative;
-  display: inline-block;
-  max-width: 100%;
-}
-
-/* reserve space ONLY when ellipsis exists */
-.mpcVisible.mpcHasMore {
-  padding-right: 20px;
-}
-
-/* visible MPC links */
-.mpcVisible .mpcLink {
-  display: block;
+  display: inline-block;   /* shrink-wrap to the link text */
+  max-width: 100%;         /* don't overflow the cell width */
   line-height: 18px;
+  margin-bottom: 0;        /* keep tight like your current */
+}
+
+/* links look/behavior (same idea as before) */
+.mpcLine .mpcLink {
+  display: inline;
   white-space: nowrap;
 }
 
-/* apply truncation only when more items exist */
-.mpcVisible.mpcHasMore .mpcLink {
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* only the 2nd line gets space reserved for ellipsis */
+.mpcLine2.mpcHasMore {
+  padding-right: 18px;     /* room for ... */
 }
 
-/* ellipsis */
+/* ellipsis button at END of the 2nd link line (not at column end) */
 .mpcEllipsis {
   position: absolute;
   right: 0;
-  top: 18px; /* second line */
+  top: 0;                  /* inside the 2nd line */
   cursor: pointer;
   background: #fff;
   padding: 0 6px;
@@ -74,19 +88,21 @@ _buildMpcCodeReferences = function (data) {
 .mpcTooltip {
   display: none;
   position: absolute;
-  top: 18px;
-  left: 100%;
-  margin-left: 0;
+  top: 0;                  /* align with ellipsis/link line */
+  left: 100%;              /* right next to the ellipsis line */
+  margin-left: 0;          /* no gap so it won't disappear */
   z-index: 9999;
+
   background: #fff;
   border: 1px solid #ccc;
   box-shadow: 0 2px 10px rgba(0,0,0,.15);
   padding: 10px;
+
   min-width: 260px;
   max-width: 520px;
 }
 
-/* tooltip links */
+/* tooltip links styling (keep like your current; truncation kept) */
 .mpcTooltip .mpcLink {
   display: block;
   line-height: 18px;
@@ -96,11 +112,13 @@ _buildMpcCodeReferences = function (data) {
   text-overflow: ellipsis;
 }
 
-/* show tooltip ONLY when hovering ellipsis */
+/* show tooltip ONLY when hovering/focusing ellipsis (and keep open when hovering tooltip) */
 .mpcEllipsis:hover + .mpcTooltip,
 .mpcEllipsis:focus + .mpcTooltip,
 .mpcTooltip:hover {
   display: block !important;
 }
+
+
 
 
