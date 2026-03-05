@@ -1,33 +1,106 @@
-.mpcEllipsis {
-  display:inline;
-  margin-left:4px;
-  cursor:pointer;
-  font-weight:normal;
+_buildMpcCodeReferences = function (data) {
+  var mpcCodes = data.mpcCodes || [];
+
+  function link(code) {
+    return "<a href='#' class='viewMpcCodeDetailsBtn mpcLink'>" + code + "</a>";
+  }
+
+  if (!mpcCodes.length) {
+    return "";
+  }
+
+  var allMpc = mpcCodes.map(link).join("");
+  var moreMpc = mpcCodes.length > 2;
+
+  // Build first 2 lines. If more than 2, append ellipsis at END of 2nd link line.
+  var visibleMpc = mpcCodes.slice(0, 2).map(function (code, idx) {
+    var a = link(code);
+
+    if (idx === 1 && moreMpc) {
+      // ellipsis + tooltip anchored to ellipsis (so it stays next to link)
+      return (
+        "<div class='mpcLine'>" +
+          a +
+          "<span class='mpcMore' tabindex='0' aria-label='Show all MPC codes'>&hellip;" +
+            "<span class='mpcTooltip'>" + allMpc + "</span>" +
+          "</span>" +
+        "</div>"
+      );
+    }
+
+    return "<div class='mpcLine'>" + a + "</div>";
+  }).join("");
+
+  return (
+    "<div class='mpcCell'>" +
+      "<div class='mpcVisible'>" + visibleMpc + "</div>" +
+    "</div>"
+  );
+};
+
+
+/* MPC cell container */
+.mpcCell{
+  position: relative;
+  width: 100%;
 }
 
-.mpcTooltip {
-  display:none;
-  position:absolute;
-  top:0;
-  left:100%;
-  margin-left:4px;
-  background:#fff;
-  border:1px solid #ccc;
-  box-shadow:0 2px 10px rgba(0,0,0,.15);
-  padding:6px;
-  min-width:220px;
-  z-index:9999;
+/* each visible row line */
+.mpcLine{
+  line-height: 18px;
+  white-space: nowrap;
 }
 
-.mpcTooltip .mpcLink {
-  display:block;
-  font-weight:normal;
-  line-height:16px;
-  margin-bottom:2px;
+/* visible links */
+.mpcVisible .mpcLink{
+  display: inline;
+  line-height: 18px;
 }
 
-.mpcEllipsis:hover .mpcTooltip,
-.mpcEllipsis:focus .mpcTooltip,
-.mpcTooltip:hover {
-  display:block;
+/* ellipsis wrapper: sits right after 2nd link text */
+.mpcMore{
+  display: inline-block;
+  margin-left: 4px;
+  cursor: pointer;
+  font-weight: normal;
+  position: relative;   /* tooltip anchors to THIS */
 }
+
+/* tooltip panel (anchored to ellipsis so never goes to column end/bottom) */
+.mpcMore .mpcTooltip{
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 100%;
+  margin-left: 6px;
+
+  z-index: 9999;
+  background: #fff;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 10px rgba(0,0,0,.15);
+  padding: 10px;
+
+  min-width: 260px;
+  max-width: 520px;
+}
+
+/* links inside tooltip */
+.mpcMore .mpcTooltip .mpcLink{
+  display: block;
+  font-weight: normal;      /* fixes bold */
+  line-height: 18px;
+  margin-bottom: 6px;       /* spacing like before */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* show tooltip ONLY when hovering/focusing ellipsis (or tooltip itself) */
+.mpcMore:hover .mpcTooltip,
+.mpcMore:focus .mpcTooltip,
+.mpcMore .mpcTooltip:hover{
+  display: block;
+}
+
+
+
