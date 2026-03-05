@@ -1,50 +1,100 @@
 _buildMpcCodeReferences = function (data) {
-  var mpcCodes = data.mpcCodes || [];
+    var mpcCodes = data.mpcCodes || [];
 
-  function link(code) {
-    return "<a href='#' class='viewMpcCodeDetailsBtn mpcLink'>" + code + "</a>";
-  }
+    function link(code) {
+        return "<a href='#' class='viewMpcCodeDetailsBtn mpcLink'>" + code + "</a>";
+    }
 
-  if (!mpcCodes.length) {
-    return "";
-  }
+    if (!mpcCodes.length) {
+        return "";
+    }
 
-  var first = mpcCodes[0] ? link(mpcCodes[0]) : "";
-  var second = mpcCodes[1] ? link(mpcCodes[1]) : "";
-  var allMpc = mpcCodes.map(link).join("");
+    var visibleMpc = mpcCodes.slice(0, 2).map(link).join("");
+    var allMpc = mpcCodes.map(link).join("");
+    var moreMpc = mpcCodes.length > 2;
 
-  var moreMpc = mpcCodes.length > 2;
-
-  // 2 visible lines (each on its own line)
-  var visibleHtml =
-    "<div class='mpcLine mpcLine1'>" + first + "</div>" +
-    "<div class='mpcLine mpcLine2'>" +
-      second +
-      (moreMpc ? "<span class='mpcEllipsis' tabindex='0' aria-label='Show all MPC codes'>&hellip;</span>" : "") +
-    "</div>";
-
-  return ""
-    + "<div class='mpcCell'>"
-    +   "<div class='mpcVisible'>" + visibleHtml + "</div>"
-    +   (moreMpc ? "<div class='mpcTooltip'>" + allMpc + "</div>" : "")
-    + "</div>";
+    return ""
+        + "<div class='mpcCell'>"
+        +   "<div class='mpcVisible'>"
+        +     visibleMpc
+        +     (moreMpc
+                ? "<span class='mpcEllipsis' tabindex='0' aria-label='Show all MPC codes'>&hellip;</span>"
+                + "<div class='mpcTooltip'>" + allMpc + "</div>"
+                : ""
+          )
+        +   "</div>"
+        + "</div>";
 };
 
 
-/* Make 2nd line hold link + ellipsis together */
-.mpcLine2{
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+/* MPC cell container */
+.mpcCell {
+  position: relative;
+  width: 100%;
 }
 
-/* Ellipsis should NOT be absolute anymore */
-.mpcEllipsis{
-  position: static;     /* overrides absolute */
-  top: auto;
-  right: auto;
-  padding: 0;
-  background: transparent;
+/* IMPORTANT:
+   Make the visible block shrink-to-content (up to column width),
+   so the ellipsis sits right after the link text area, not at column end */
+.mpcVisible {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  padding-right: 20px; /* space reserved for the ellipsis */
 }
 
-.mpcLine2 .mpcLink{ flex: 0 1 auto; }
+/* visible MPC links (two lines max) */
+.mpcVisible .mpcLink {
+  display: block;
+  line-height: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ellipsis (placed at end of 2nd line, relative to .mpcVisible width) */
+.mpcEllipsis {
+  position: absolute;
+  right: 0;
+  top: 18px;            /* second line */
+  cursor: pointer;
+  background: #fff;
+  padding: 0 6px;
+  line-height: 18px;
+  font-weight: bold;
+  z-index: 2;
+}
+
+/* tooltip panel */
+.mpcTooltip {
+  display: none;
+  position: absolute;
+  top: 18px;           /* align with ellipsis line */
+  left: 100%;
+  margin-left: 0;      /* no gap (prevents hover drop) */
+  z-index: 9999;
+  background: #fff;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 10px rgba(0,0,0,.15);
+  padding: 10px;
+  min-width: 260px;
+  max-width: 520px;
+}
+
+/* links inside tooltip */
+.mpcTooltip .mpcLink {
+  display: block;
+  line-height: 18px;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* show tooltip ONLY when hovering/focusing ellipsis (and keep it open on tooltip hover) */
+.mpcEllipsis:hover + .mpcTooltip,
+.mpcEllipsis:focus + .mpcTooltip,
+.mpcTooltip:hover {
+  display: block !important;
+}
+
