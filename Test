@@ -1,40 +1,34 @@
-/* MPC cell container */
+/* container */
 .mpcCell {
   position: relative;
   width: 100%;
-  max-width: 240px; /* keeps column width reasonable */
 }
 
-/* visible MPC links (two lines max) */
+/* visible area (2 links) */
 .mpcVisible .mpcLink {
-  display: block;
+  display: block;              /* one per line */
   line-height: 18px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-right: 20px; /* space for ellipsis */
 }
 
-/* ellipsis */
+/* ellipsis shown after 2nd link */
 .mpcEllipsis {
-  position: absolute;
-  right: 0;
-  top: 18px; /* second line */
+  display: inline-block;
+  margin-left: 4px;
   cursor: pointer;
-  background: #fff;
-  padding: 0 6px;
-  line-height: 18px;
+  padding: 0 4px;              /* easier hover */
   font-weight: bold;
-  z-index: 2;
 }
 
-/* tooltip panel */
+/* tooltip box */
 .mpcTooltip {
   display: none;
   position: absolute;
-  top: 18px; /* align with ellipsis */
-  left: 100%;
-  margin-left: 0; /* removes hover gap */
+  top: 18px;                   /* aligns with 2nd line */
+  left: 100%;                  /* to the right of cell content */
+  margin-left: 0;              /* NO GAP (important) */
   z-index: 9999;
   background: #fff;
   border: 1px solid #ccc;
@@ -44,35 +38,18 @@
   max-width: 520px;
 }
 
-/* links inside tooltip */
+/* IMPORTANT: tooltip link style should NOT inherit truncation */
 .mpcTooltip .mpcLink {
-  display: block;
+  display: block;              /* one per line in tooltip */
   line-height: 18px;
-  margin-bottom: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;         /* allow wrapping if needed */
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
 }
 
-/* prevent tooltip from showing when hovering the cell or links */
-.mpcCell .mpcTooltip {
-  display: none !important;
-}
-
-/* show tooltip ONLY when hovering ellipsis */
+/* show tooltip ONLY when hovering ellipsis or tooltip itself */
 .mpcEllipsis:hover + .mpcTooltip,
-.mpcEllipsis:focus + .mpcTooltip,
 .mpcTooltip:hover {
-  display: block !important;
-}
-
-/* hover effect for ellipsis */
-.mpcEllipsis:hover {
-  color: #0070d2;
-}
-
-/* keep table rows aligned */
-#offerProductTable td,
-#offerProductTable th {
-  vertical-align: top;
+  display: block;
 }
