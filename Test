@@ -1,42 +1,18 @@
-_buildMpcCodeReferences = function (data) {
+(function ($, Granite) {
+  "use strict";
 
-  var mpcCodes = data.mpcCodes || [];
+  function disableWorkflowIfLocked() {
+    var pagePath = Granite.author.ContentFrame.getContentPath();
 
-  function link(code) {
-    return "<a href='#' class='viewMpcCodeDetailsBtn mpcLink'>" + code + "</a>";
+    $.getJSON(pagePath + ".json").done(function (data) {
+      if (data["jcr:lockOwner"]) {
+        $("button.js-editor-WorkflowStart")
+          .prop("disabled", true)
+          .attr("disabled", "disabled")
+          .addClass("is-disabled");
+      }
+    });
   }
 
-  if (!mpcCodes.length) {
-    return "";
-  }
-
-  var allMpc = mpcCodes.map(link).join("");
-  var moreMpc = mpcCodes.length > 2;
-
-  var visibleMpc = "";
-
-  // First line
-  visibleMpc += "<div class='mpcLine'>" + link(mpcCodes[0]) + "</div>";
-
-  // Second line
-  if (mpcCodes.length > 1) {
-
-    visibleMpc += "<div class='mpcLine'>" + link(mpcCodes[1]);
-
-    if (moreMpc) {
-      visibleMpc +=
-        "<span class='mpcMore' tabindex='0' aria-label='Show all MPC codes'>&hellip;" +
-          "<span class='mpcTooltip'>" + allMpc + "</span>" +
-        "</span>";
-    }
-
-    visibleMpc += "</div>";
-  }
-
-  return (
-    "<div class='mpcCell'>" +
-      "<div class='mpcVisible'>" + visibleMpc + "</div>" +
-    "</div>"
-  );
-};
-
+  $(document).on("cq-editor-loaded", disableWorkflowIfLocked);
+})(Granite.$, Granite);
