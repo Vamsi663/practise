@@ -1,3 +1,21 @@
-l$("[class*='WorkflowStart']").closest("coral-button, button")
-  .attr("disabled", "disabled")
-  .addClass("is-disabled");
+(function ($, Granite) {
+    "use strict";
+
+    function disableWorkflowIfLocked() {
+        var pagePath = Granite.author.ContentFrame.getContentPath();
+
+        $.getJSON(pagePath + "/jcr:content.json").done(function (data) {
+            if (data["jcr:lockOwner"]) {
+                $("[class*='WorkflowStart']")
+                    .closest("coral-button, button")
+                    .attr("disabled", "disabled")
+                    .addClass("is-disabled");
+            }
+        });
+    }
+
+    $(document).on("click", "[class*='PageInfo']", function () {
+        setTimeout(disableWorkflowIfLocked, 300);
+    });
+
+})(Granite.$, Granite);
