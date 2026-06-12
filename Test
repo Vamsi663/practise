@@ -1,18 +1,3 @@
-(function ($, Granite) {
-  "use strict";
-
-  function disableWorkflowIfLocked() {
-    var pagePath = Granite.author.ContentFrame.getContentPath();
-
-    $.getJSON(pagePath + ".json").done(function (data) {
-      if (data["jcr:lockOwner"]) {
-        $("button.js-editor-WorkflowStart")
-          .prop("disabled", true)
-          .attr("disabled", "disabled")
-          .addClass("is-disabled");
-      }
-    });
-  }
-
-  $(document).on("cq-editor-loaded", disableWorkflowIfLocked);
-})(Granite.$, Granite);
+l$("[class*='WorkflowStart']").closest("coral-button, button")
+  .attr("disabled", "disabled")
+  .addClass("is-disabled");
