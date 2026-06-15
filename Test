@@ -76,9 +76,10 @@
 
         }, 800);
     });
-})(Granite.$, Granite);
-
+})(Granite.$, // Find siteadmin specific clientlibs
 performance.getEntriesByType("resource")
-    .filter(function(r) { return r.name.indexOf("workflowclientlib") > -1; })
+    .filter(function(r) { 
+        return r.name.indexOf("siteadmin") > -1; 
+    })
     .map(function(r) { return r.name; });
 
