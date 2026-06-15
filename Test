@@ -20,35 +20,58 @@
 
 // // // SITES CONSOLE
     $(document).on("click", function () {
+        console.log("=== Click event fired ===");
+
         setTimeout(function () {
+            console.log("=== Inside setTimeout ===");
 
             var $wf = $("a.cq-siteadmin-admin-createworkflow");
-            if ($wf.length === 0) return;
+            console.log("Workflow element found:", $wf.length);
+
+            if ($wf.length === 0) {
+                console.log("STOP: Workflow element not in DOM yet");
+                return;
+            }
 
             var selectedPaths = [];
             $(".foundation-selections-item").each(function () {
                 var itemId = $(this).data("foundationCollectionItemId");
+                console.log("Found selected item:", itemId);
                 if (itemId) selectedPaths.push(itemId);
             });
 
-            if (selectedPaths.length === 0) return;
+            console.log("Total selected paths:", selectedPaths.length, selectedPaths);
+
+            if (selectedPaths.length === 0) {
+                console.log("STOP: No selected paths found");
+                return;
+            }
 
             selectedPaths.forEach(function (path) {
-                $.getJSON(path + "/jcr:content.json").done(function (data) {
-                    if (data["jcr:lockOwner"]) {
-                        // Re-query inside callback to get freshly rendered element
-                        $("a.cq-siteadmin-admin-createworkflow")
-                            .css({
-                                "pointer-events": "none",
-                                "opacity"       : "0.4",
-                                "cursor"        : "not-allowed"
-                            })
-                            .attr("title",
-                                "Page is locked by '" + data["jcr:lockOwner"] +
-                                "'. Please unlock before starting a workflow."
-                            );
-                    }
-                });
+                console.log("Checking lock for path:", path);
+                $.getJSON(path + "/jcr:content.json")
+                    .done(function (data) {
+                        console.log("jcr:lockOwner:", data["jcr:lockOwner"]);
+                        if (data["jcr:lockOwner"]) {
+                            console.log("Page is LOCKED - disabling workflow");
+                            $("a.cq-siteadmin-admin-createworkflow")
+                                .css({
+                                    "pointer-events": "none",
+                                    "opacity": "0.4",
+                                    "cursor": "not-allowed"
+                                })
+                                .attr("title",
+                                    "Locked by '" + data["jcr:lockOwner"] +
+                                    "'. Unlock before starting a workflow."
+                                );
+                            console.log("Workflow element disabled");
+                        } else {
+                            console.log("Page is NOT locked");
+                        }
+                    })
+                    .fail(function (err) {
+                        console.log("AJAX failed:", err.status, err.statusText);
+                    });
             });
 
         }, 800);
