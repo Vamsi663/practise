@@ -1,7 +1,6 @@
 function checkAndDisableWorkflow() {
         var $wf = $("a.cq-siteadmin-admin-createworkflow");
-        if ($wf.length === 0) return;
-
+        if ($wf.length === 0) 
         // ALWAYS reset first
         $wf.removeAttr("style").removeAttr("title");
 
@@ -37,5 +36,61 @@ function checkAndDisableWorkflow() {
     });
 
     $(document).on("click", function () {
+        setTimeout((function ($, Granite) {
+    "use strict";
+
+    var currentRequest = null;
+
+    function checkAndDisableWorkflow() {
+        var $wf = $("a.cq-siteadmin-admin-createworkflow");
+        if ($wf.length === 0) return;
+
+        // Cancel any pending previous request
+        if (currentRequest) {
+            currentRequest.abort();
+            currentRequest = null;
+        }
+
+        // Always reset
+        $wf.removeAttr("style").removeAttr("title");
+
+        var selectedPaths = [];
+        $(".foundation-selections-item").each(function () {
+            var itemId = $(this).data("foundationCollectionItemId");
+            if (itemId) selectedPaths.push(itemId);
+        });
+
+        console.log("Selected paths:", selectedPaths);
+        if (selectedPaths.length === 0) return;
+
+        selectedPaths.forEach(function (path) {
+            currentRequest = $.getJSON(path + "/jcr:content.json")
+                .done(function (data) {
+                    console.log("Path:", path, "LockOwner:", data["jcr:lockOwner"]);
+                    if (data["jcr:lockOwner"]) {
+                        $("a.cq-siteadmin-admin-createworkflow")
+                            .css({
+                                "pointer-events": "none",
+                                "opacity": "0.4",
+                                "cursor": "not-allowed"
+                            })
+                            .attr("title",
+                                "Locked by: " + data["jcr:lockOwner"]
+                            );
+                    }
+                });
+        });
+    }
+
+    $(document).on("coral-overlay:open", function () {
+        setTimeout(checkAndDisableWorkflow, 300);
+    });
+
+    $(document).on("click", function () {
         setTimeout(checkAndDisableWorkflow, 800);
     });
+
+}(Granite.$, Granite));
+
+
+
