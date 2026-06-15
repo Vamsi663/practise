@@ -81,5 +81,12 @@ performance.getEntriesByType("resource")
     .filter(function(r) { 
         return r.name.indexOf("siteadmin") > -1; 
     })
-    .map(function(r) { return r.name; });
+    .map(function(r) { return $.ajax({
+    url: "/libs/cq/gui/components/siteadmin/admin/clientlibs/collectionpage.infinity.json",
+    success: function(data) {
+        console.log("categories:", data["categories"]);
+    }
+});
+
+
 
