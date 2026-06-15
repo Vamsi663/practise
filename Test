@@ -15,8 +15,7 @@
     }
 
     $(document).on("click", "[class*='PageInfo']", function () {
-        setTimeout(disableWorkflowIfLocked, 300);
-    });
+        setTimeout(disableWorkflowIfLocked, 
 
 // // // SITES CONSOLE
     $(document).on("click", function () {
@@ -76,17 +75,50 @@
 
         }, 800);
     });
-})(Granite.$, // Find siteadmin specific clientlibs
-performance.getEntriesByType("resource")
-    .filter(function(r) { 
-        return r.name.indexOf("siteadmin") > -1; 
-    })
-    .map(function(r) { return $.ajax({
-    url: "/libs/cq/gui/components/siteadmin/admin/clientlibs/collectionpage.infinity.json",
-    success: function(data) {
-        console.log("categories:", data["categories"]);
+})(Granite.$, // Find siteadmin specific function checkAndDisableWorkflow() {
+        var $wf = $("a.cq-siteadmin-admin-createworkflow");
+        if ($wf.length === 0) return;
+
+        var selectedPaths = [];
+        $(".foundation-selections-item").each(function () {
+            var itemId = $(this).data("foundationCollectionItemId");
+            if (itemId) selectedPaths.push(itemId);
+        });
+
+        if (selectedPaths.length === 0) return;
+
+        // Reset first — re-enable for unlocked pages
+        $wf.css({
+            "pointer-events": "",
+            "opacity": "",
+            "cursor": ""
+        }).removeAttr("title");
+
+        selectedPaths.forEach(function (path) {
+            $.getJSON(path + "/jcr:content.json").done(function (data) {
+                if (data["jcr:lockOwner"]) {
+                    $("a.cq-siteadmin-admin-createworkflow")
+                        .css({
+                            "pointer-events": "none",
+                            "opacity": "0.4",
+                            "cursor": "not-allowed"
+                        })
+                        .attr("title",
+                            "Locked by: " + data["jcr:lockOwner"] +
+                            ". Please unlock before starting a workflow."
+                        );
+                }
+            });
+        });
     }
-});
 
+    // Fire on coral overlay open (action menu popover)
+    $(document).on("coral-overlay:open", function () {
+        setTimeout(checkAndDisableWorkflow, 300);
+    });
 
+    // Also fire on click as fallback
+    $(document).on("click", function () {
+        setTimeout(checkAndDisableWorkflow, 800);
+    });
 
