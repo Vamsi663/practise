@@ -78,10 +78,7 @@
     });
 })(Granite.$, Granite);
 
+performance.getEntriesByType("resource")
+    .filter(function(r) { return r.name.indexOf("workflowclientlib") > -1; })
+    .map(function(r) { return r.name; });
 
-
-// Check what path the JS is actually picking up
-$(".foundation-selections-item").each(function() {
-    console.log("ItemId:", $(this).data("foundationCollectionItemId"));
-    console.log("Path:", $(this).data("path"));
-});
