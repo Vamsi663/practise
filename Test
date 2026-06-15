@@ -1,96 +1,51 @@
-function checkAndDisableWorkflow() {
-        var $wf = $("a.cq-siteadmin-admin-createworkflow");
-        if ($wf.length === 0) 
-        // ALWAYS reset first
-        $wf.removeAttr("style").removeAttr("title");
+function setWorkflowButtonDisabled(disabled, message) {
+    var $workflow = $("cq-siteadmin-admin-createworkflow");
 
-        var selectedPaths = [];
-        $(".foundation-selections-item").each(function () {
-            var itemId = $(this).data("foundationCollectionItemId");
-            if (itemId) selectedPaths.push(itemId);
-        });
-
-        if (selectedPaths.length === 0) return;
-
-        selectedPaths.forEach(function (path) {
-            $.getJSON(path + "/jcr:content.json").done(function (data) {
-                console.log("Path:", path, "LockOwner:", data["jcr:lockOwner"]);
-                if (data["jcr:lockOwner"]) {
-                    $("a.cq-siteadmin-admin-createworkflow")
-                        .css({
-                            "pointer-events": "none",
-                            "opacity": "0.4",
-                            "cursor": "not-allowed"
-                        })
-                        .attr("title",
-                            "Locked by: " + data["jcr:lockOwner"] +
-                            ". Please unlock before starting a workflow."
-                        );
-                }
-            });
-        });
+    if (disabled) {
+        $workflow.css({
+            "pointer-events": "none",
+            "opacity": "0.4",
+            "cursor": "not-allowed"
+        }).attr("title", message || "Page is locked");
+    } else {
+        $workflow.css({
+            "pointer-events": "",
+            "opacity": "",
+            "cursor": ""
+        }).removeAttr("title");
     }
+}
 
-    $(document).on("coral-overlay:open", function () {
-        setTimeout(checkAndDisableWorkflow, 300);
-    });
+function checkSelectedPageLock() {
+    setTimeout(function () {
+        var selectedPaths = [];
 
-    $(document).on("click", function () {
-        setTimeout((function ($, Granite) {
-    "use strict";
+        $(".foundation-selections-item").each(function () {
+            selectedPaths.push(
+                $(this).data("foundationCollectionItemId") ||
+                $(this).data("path")
+            );
+        });
 
-    var currentRequest = null;
-
-    function checkAndDisableWorkflow() {
-        var $wf = $("a.cq-siteadmin-admin-createworkflow");
-        if ($wf.length === 0) return;
-
-        // Cancel any pending previous request
-        if (currentRequest) {
-            currentRequest.abort();
-            currentRequest = null;
+        if (selectedPaths.length === 0) {
+            setWorkflowButtonDisabled(false);
+            return;
         }
 
-        // Always reset
-        $wf.removeAttr("style").removeAttr("title");
+        var path = selectedPaths[0];
 
-        var selectedPaths = [];
-        $(".foundation-selections-item").each(function () {
-            var itemId = $(this).data("foundationCollectionItemId");
-            if (itemId) selectedPaths.push(itemId);
+        $.getJSON(path + "/jcr:content.json").done(function (data) {
+            if (data["jcr:lockOwner"]) {
+                setWorkflowButtonDisabled(true, "Please unlock the page before starting workflow");
+            } else {
+                setWorkflowButtonDisabled(false);
+            }
+        }).fail(function () {
+            setWorkflowButtonDisabled(false);
         });
 
-        console.log("Selected paths:", selectedPaths);
-        if (selectedPaths.length === 0) return;
+    }, 300);
+}
 
-        selectedPaths.forEach(function (path) {
-            currentRequest = $.getJSON(path + "/jcr:content.json")
-                .done(function (data) {
-                    console.log("Path:", path, "LockOwner:", data["jcr:lockOwner"]);
-                    if (data["jcr:lockOwner"]) {
-                        $("a.cq-siteadmin-admin-createworkflow")
-                            .css({
-                                "pointer-events": "none",
-                                "opacity": "0.4",
-                                "cursor": "not-allowed"
-                            })
-                            .attr("title",
-                                "Locked by: " + data["jcr:lockOwner"]
-                            );
-                    }
-                });
-        });
-    }
-
-    $(document).on("coral-overlay:open", function () {
-        setTimeout(checkAndDisableWorkflow, 300);
-    });
-
-    $(document).on("click", function () {
-        setTimeout(checkAndDisableWorkflow, 800);
-    });
-
-}(Granite.$, Granite));
-
-
-
+$(document).on("click", ".foundation-collection-item", checkSelectedPageLock);
+$(document).on("foundation-selections-change", checkSelectedPageLock);
