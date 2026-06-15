@@ -51,3 +51,11 @@
         }, 500);
     });
 })(Granite.$, Granite);
+
+
+
+// Check what path the JS is actually picking up
+$(".foundation-selections-item").each(function() {
+    console.log("ItemId:", $(this).data("foundationCollectionItemId"));
+    console.log("Path:", $(this).data("path"));
+});
