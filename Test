@@ -18,48 +18,36 @@
         setTimeout(disableWorkflowIfLocked, 300);
     });
 
-// SITES CONSOLE
-    $(document).on("coral-overlay:open foundation-contentloaded", function () {
-        var $workflowAction = $("a.cq-siteadmin-admin-createworkflow");
-        if ($workflowAction.length === 0) return;
+// // SITES CONSOLE
+    $(document).on("click", function () {
+        setTimeout(function () {
+            var $wf = $("a.cq-siteadmin-admin-createworkflow");
+            if ($wf.length === 0) return;
 
-        var selectedPaths = [];
-        $(".foundation-selections-item").each(function () {
-            selectedPaths.push($(this).data("foundationCollectionItemId"));
-        });
-
-        if (selectedPaths.length === 0) return;
-
-        var lockedOwners = [];
-        var checks = selectedPaths.map(function (path) {
-            return $.getJSON(path + "/jcr:content.json").then(function (data) {
-                if (data["jcr:lockOwner"]) {
-                    lockedOwners.push(data["jcr:lockOwner"]);
-                }
+            var selectedPaths = [];
+            $(".foundation-selections-item").each(function () {
+                selectedPaths.push(
+                    $(this).data("foundationCollectionItemId") ||
+                    $(this).data("path")
+                );
             });
-        });
 
-        $.when.apply($, checks).done(function () {
-            if (lockedOwners.length > 0) {
-                $workflowAction
-                    .addClass("is-disabled")
-                    .attr("aria-disabled", "true")
-                    .css({ "pointer-events": "none", "opacity": "0.4" })
-                    .attr("title", "Page locked by: " + lockedOwners.join(", "));
-            }
-        });
+            if (selectedPaths.length === 0) return;
+
+            var checks = selectedPaths.map(function (path) {
+                return $.getJSON(path + "/jcr:content.json").then(function (data) {
+                    if (data["jcr:lockOwner"]) {
+                        $wf.css({
+                            "pointer-events": "none",
+                            "opacity": "0.4",
+                            "cursor": "not-allowed"
+                        }).attr("title",
+                            "Page locked by: " + data["jcr:lockOwner"] +
+                            ". Please unlock before starting a workflow."
+                        );
+                    }
+                });
+            });
+        }, 500);
     });
-
-    // Hard block click
-    $(document).on("click", "a.cq-siteadmin-admin-createworkflow.is-disabled", function (e) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        var ui = $(window).adaptTo("foundation-ui");
-        if (ui) {
-            ui.alert("Workflow Blocked",
-                "Page is locked. Please unlock before starting a workflow.",
-                "error");
-        }
-    });
-
 })(Granite.$, Granite);
