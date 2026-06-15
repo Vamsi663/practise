@@ -1,80 +1,71 @@
 (function ($) {
-  "use strict";
+    "use strict";
 
-  var requestId = 0;
+    function getWorkflowAction() {
+        return $("cq-siteadmin-admin-createworkflow")
+            .closest(".foundation-collection-action, coral-button, button, a");
+    }
 
-  function getWorkflowButton() {
-    return $("cq-siteadmin-admin-createworkflow");
-  }
+    function enableWorkflow() {
+        var $btn = getWorkflowAction();
 
-  function enableWorkflow() {
-    getWorkflowButton()
-      .removeAttr("style")
-      .removeAttr("title")
-      .removeAttr("disabled")
-      .removeAttr("aria-disabled")
-      .removeClass("is-disabled disabled");
-  }
+        $btn.removeClass("is-disabled disabled")
+            .removeAttr("disabled")
+            .removeAttr("aria-disabled")
+            .removeAttr("title")
+            .css({
+                "pointer-events": "",
+                "opacity": "",
+                "cursor": ""
+            });
+    }
 
-  function disableWorkflow(owner) {
-    getWorkflowButton()
-      .css({
-        "pointer-events": "none",
-        "opacity": "0.4",
-        "cursor": "not-allowed"
-      })
-      .attr("title", "Page locked by " + owner)
-      .attr("aria-disabled", "true")
-      .addClass("is-disabled");
-  }
+    function disableWorkflow(owner) {
+        var $btn = getWorkflowAction();
 
-  function getSelectedPath() {
-    var $item = $(".foundation-collection-item.is-selected").last();
+        $btn.addClass("is-disabled")
+            .attr("aria-disabled", "true")
+            .attr("title", "Page locked by " + owner)
+            .css({
+                "pointer-events": "none",
+                "opacity": "0.4",
+                "cursor": "not-allowed"
+            });
+    }
 
-    return $item.attr("data-foundation-collection-item-id") ||
-           $item.data("foundationCollectionItemId") ||
-           $item.attr("data-path") ||
-           $item.data("path");
-  }
+    function getSelectedPath() {
+        var $selected = $(".foundation-collection-item.is-selected").first();
 
-  function checkLock() {
-    var currentRequest = ++requestId;
+        return $selected.attr("data-foundation-collection-item-id")
+            || $selected.data("foundationCollectionItemId")
+            || $selected.attr("data-path")
+            || $selected.data("path");
+    }
 
-    setTimeout(function () {
-      var path = getSelectedPath();
+    function checkLock() {
+        setTimeout(function () {
+            enableWorkflow();
 
-      console.log("Selected path:", path);
+            var path = getSelectedPath();
+            console.log("Selected path:", path);
 
-      enableWorkflow();
+            if (!path) {
+                return;
+            }
 
-      if (!path) {
-        return;
-      }
+            $.getJSON(path + "/jcr:content.json").done(function (data) {
+                console.log("Lock owner:", data["jcr:lockOwner"]);
 
-      $.getJSON(path + "/jcr:content.json").done(function (data) {
+                if (data["jcr:lockOwner"]) {
+                    disableWorkflow(data["jcr:lockOwner"]);
+                } else {
+                    enableWorkflow();
+                }
+            });
+        }, 500);
+    }
 
-        // ignore old ajax response
-        if (currentRequest !== requestId) {
-          return;
-        }
-
-        console.log("Lock owner:", data["jcr:lockOwner"]);
-
-        if (data["jcr:lockOwner"]) {
-          disableWorkflow(data["jcr:lockOwner"]);
-        } else {
-          enableWorkflow();
-        }
-      }).fail(function () {
-        if (currentRequest === requestId) {
-          enableWorkflow();
-        }
-      });
-
-    }, 300);
-  }
-
-  $(document).on("foundation-selections-change click", ".foundation-collection-item", checkLock);
-  $(document).on("foundation-selections-change", checkLock);
+    $(document).on("foundation-selections-change", checkLock);
+    $(document).on("click", ".foundation-collection-item", checkLock);
 
 })(Granite.$);
