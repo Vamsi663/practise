@@ -18,37 +18,40 @@
         setTimeout(disableWorkflowIfLocked, 300);
     });
 
-// // SITES CONSOLE
+// // // SITES CONSOLE
     $(document).on("click", function () {
         setTimeout(function () {
+
             var $wf = $("a.cq-siteadmin-admin-createworkflow");
             if ($wf.length === 0) return;
 
             var selectedPaths = [];
             $(".foundation-selections-item").each(function () {
-                selectedPaths.push(
-                    $(this).data("foundationCollectionItemId") ||
-                    $(this).data("path")
-                );
+                var itemId = $(this).data("foundationCollectionItemId");
+                if (itemId) selectedPaths.push(itemId);
             });
 
             if (selectedPaths.length === 0) return;
 
-            var checks = selectedPaths.map(function (path) {
-                return $.getJSON(path + "/jcr:content.json").then(function (data) {
+            selectedPaths.forEach(function (path) {
+                $.getJSON(path + "/jcr:content.json").done(function (data) {
                     if (data["jcr:lockOwner"]) {
-                        $wf.css({
-                            "pointer-events": "none",
-                            "opacity": "0.4",
-                            "cursor": "not-allowed"
-                        }).attr("title",
-                            "Page locked by: " + data["jcr:lockOwner"] +
-                            ". Please unlock before starting a workflow."
-                        );
+                        // Re-query inside callback to get freshly rendered element
+                        $("a.cq-siteadmin-admin-createworkflow")
+                            .css({
+                                "pointer-events": "none",
+                                "opacity"       : "0.4",
+                                "cursor"        : "not-allowed"
+                            })
+                            .attr("title",
+                                "Page is locked by '" + data["jcr:lockOwner"] +
+                                "'. Please unlock before starting a workflow."
+                            );
                     }
                 });
             });
-        }, 500);
+
+        }, 800);
     });
 })(Granite.$, Granite);
 
