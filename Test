@@ -1,50 +1,64 @@
 (function ($) {
   "use strict";
 
-  function workflowButton() {
+  var requestId = 0;
+
+  function getWorkflowButton() {
     return $("cq-siteadmin-admin-createworkflow");
   }
 
   function enableWorkflow() {
-    workflowButton()
-      .css("pointer-events", "")
-      .css("opacity", "")
-      .css("cursor", "")
+    getWorkflowButton()
+      .removeAttr("style")
       .removeAttr("title")
-      .removeClass("is-disabled");
+      .removeAttr("disabled")
+      .removeAttr("aria-disabled")
+      .removeClass("is-disabled disabled");
   }
 
   function disableWorkflow(owner) {
-    workflowButton()
-      .css("pointer-events", "none")
-      .css("opacity", "0.4")
-      .css("cursor", "not-allowed")
+    getWorkflowButton()
+      .css({
+        "pointer-events": "none",
+        "opacity": "0.4",
+        "cursor": "not-allowed"
+      })
       .attr("title", "Page locked by " + owner)
+      .attr("aria-disabled", "true")
       .addClass("is-disabled");
   }
 
   function getSelectedPath() {
-    var $selected = $(".foundation-collection-item.is-selected").first();
+    var $item = $(".foundation-collection-item.is-selected").last();
 
-    return $selected.data("foundationCollectionItemId") ||
-           $selected.attr("data-foundation-collection-item-id") ||
-           $selected.data("path") ||
-           $selected.attr("data-path");
+    return $item.attr("data-foundation-collection-item-id") ||
+           $item.data("foundationCollectionItemId") ||
+           $item.attr("data-path") ||
+           $item.data("path");
   }
 
   function checkLock() {
-    setTimeout(function () {
-      enableWorkflow();
+    var currentRequest = ++requestId;
 
+    setTimeout(function () {
       var path = getSelectedPath();
-      console.log("selected path:", path);
+
+      console.log("Selected path:", path);
+
+      enableWorkflow();
 
       if (!path) {
         return;
       }
 
       $.getJSON(path + "/jcr:content.json").done(function (data) {
-        console.log("lock owner:", data["jcr:lockOwner"]);
+
+        // ignore old ajax response
+        if (currentRequest !== requestId) {
+          return;
+        }
+
+        console.log("Lock owner:", data["jcr:lockOwner"]);
 
         if (data["jcr:lockOwner"]) {
           disableWorkflow(data["jcr:lockOwner"]);
@@ -52,14 +66,15 @@
           enableWorkflow();
         }
       }).fail(function () {
-        enableWorkflow();
+        if (currentRequest === requestId) {
+          enableWorkflow();
+        }
       });
 
-    }, 500);
+    }, 300);
   }
 
-  $(document).on("click", ".foundation-collection-item", checkLock);
+  $(document).on("foundation-selections-change click", ".foundation-collection-item", checkLock);
   $(document).on("foundation-selections-change", checkLock);
-  $(document).on("foundation-collection-navigate", checkLock);
 
 })(Granite.$);
