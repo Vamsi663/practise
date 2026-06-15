@@ -1,78 +1,65 @@
 (function ($) {
-    "use strict";
+  "use strict";
 
-    function enableWorkflow() {
-        var $wf = $("cq-siteadmin-admin-createworkflow");
+  function workflowButton() {
+    return $("cq-siteadmin-admin-createworkflow");
+  }
 
-        $wf.css({
-            "pointer-events": "",
-            "opacity": "",
-            "cursor": ""
-        }).removeAttr("title");
-    }
+  function enableWorkflow() {
+    workflowButton()
+      .css("pointer-events", "")
+      .css("opacity", "")
+      .css("cursor", "")
+      .removeAttr("title")
+      .removeClass("is-disabled");
+  }
 
-    function disableWorkflow(message) {
-        var $wf = $("cq-siteadmin-admin-createworkflow");
+  function disableWorkflow(owner) {
+    workflowButton()
+      .css("pointer-events", "none")
+      .css("opacity", "0.4")
+      .css("cursor", "not-allowed")
+      .attr("title", "Page locked by " + owner)
+      .addClass("is-disabled");
+  }
 
-        $wf.css({
-            "pointer-events": "none",
-            "opacity": "0.4",
-            "cursor": "not-allowed"
-        }).attr("title", message);
-    }
+  function getSelectedPath() {
+    var $selected = $(".foundation-collection-item.is-selected").first();
 
-    function checkWorkflowLock() {
+    return $selected.data("foundationCollectionItemId") ||
+           $selected.attr("data-foundation-collection-item-id") ||
+           $selected.data("path") ||
+           $selected.attr("data-path");
+  }
 
-        setTimeout(function () {
+  function checkLock() {
+    setTimeout(function () {
+      enableWorkflow();
 
-            enableWorkflow();
+      var path = getSelectedPath();
+      console.log("selected path:", path);
 
-            var selectedPaths = [];
+      if (!path) {
+        return;
+      }
 
-            $(".foundation-selections-item").each(function () {
-                var path = $(this).data("foundationCollectionItemId")
-                    || $(this).data("path");
+      $.getJSON(path + "/jcr:content.json").done(function (data) {
+        console.log("lock owner:", data["jcr:lockOwner"]);
 
-                if (path) {
-                    selectedPaths.push(path);
-                }
-            });
+        if (data["jcr:lockOwner"]) {
+          disableWorkflow(data["jcr:lockOwner"]);
+        } else {
+          enableWorkflow();
+        }
+      }).fail(function () {
+        enableWorkflow();
+      });
 
-            if (selectedPaths.length === 0) {
-                enableWorkflow();
-                return;
-            }
+    }, 500);
+  }
 
-            var path = selectedPaths[0];
-
-            $.getJSON(path + "/jcr:content.json")
-                .done(function (data) {
-
-                    if (data["jcr:lockOwner"]) {
-
-                        disableWorkflow(
-                            "Page locked by " +
-                            data["jcr:lockOwner"] +
-                            ". Please unlock before starting a workflow."
-                        );
-
-                    } else {
-
-                        enableWorkflow();
-
-                    }
-                })
-                .fail(function () {
-
-                    enableWorkflow();
-
-                });
-
-        }, 300);
-    }
-
-    $(document).on("foundation-selections-change", checkWorkflowLock);
-
-    $(document).on("click", ".foundation-collection-item", checkWorkflowLock);
+  $(document).on("click", ".foundation-collection-item", checkLock);
+  $(document).on("foundation-selections-change", checkLock);
+  $(document).on("foundation-collection-navigate", checkLock);
 
 })(Granite.$);
