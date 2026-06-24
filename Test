@@ -1,11 +1,60 @@
-// Monitor ALL events on document
-var events = ["click", "mouseup", "foundation-selections:change", 
-              "foundation-collection:change", "coral-collection:change",
-              "foundation-contentloaded", "coral-columnview:change",
-              "coral-columnview:activeitemchange"];
+(function ($, Granite) {
+    "use strict";
 
-events.forEach(function(evt) {
-    $(document).on(evt, function() {
-        console.log("EVENT FIRED:", evt);
+    var lockCache = {};
+
+    // Pre-fetch on page selection - correct event
+    $(document).on("coral-columnview:activeitemchange", function (e) {
+        lockCache = {};
+
+        var $active = $(e.target).find("[data-foundation-collection-item-id]").last();
+        var path = $active.data("foundationCollectionItemId");
+
+        if (!path) {
+            // Fallback - get from URL
+            path = window.location.pathname.replace("/sites.html", "");
+        }
+
+        if (!path) return;
+
+        console.log("Pre-fetching lock for:", path);
+        $.getJSON(path + "/jcr:content.json").done(function (data) {
+            lockCache[path] = data["jcr:lockOwner"] || null;
+            console.log("Lock cached:", path, "->", lockCache[path]);
+        });
     });
-});
+
+    // Menu open - instant, no AJAX
+    $(document).on("coral-overlay:open", function () {
+        var checkId = Date.now();
+        window._lastWorkflowCheckId = checkId;
+
+        setTimeout(function () {
+            if (window._lastWorkflowCheckId !== checkId) return;
+
+            var $wf = $("a.cq-siteadmin-admin-createworkflow");
+            if ($wf.length === 0) return;
+
+            $wf.removeAttr("style").removeAttr("title");
+
+            var lockOwner = null;
+            Object.keys(lockCache).forEach(function (p) {
+                if (lockCache[p]) lockOwner = lockCache[p];
+            });
+
+            console.log("Menu open - using cached lockOwner:", lockOwner);
+
+            if (lockOwner) {
+                $wf.css({
+                    "pointer-events": "none",
+                    "opacity": "0.4",
+                    "cursor": "not-allowed"
+                }).attr("title",
+                    "Locked by: " + lockOwner +
+                    ". Please unlock before starting a workflow."
+                );
+            }
+        }, 150);
+    });
+
+}(Granite.$, Granite));
