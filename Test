@@ -1,3 +1,72 @@
-<filter root="/conf/barclaysusbc" mode="merge">
-    <exclude pattern="/conf/barclaysusbc/settings/wcm/policies(/.*)?"/>
-</filter>
+(function ($) {
+    "use strict";
+
+    function getWorkflowButton() {
+        return $("cq-siteadmin-admin-createworkflow");
+    }
+
+    function enableWorkflow() {
+        getWorkflowButton().css({
+            "pointer-events": "",
+            "opacity": "",
+            "cursor": ""
+        }).removeAttr("title");
+    }
+
+    function disableWorkflow(owner) {
+        getWorkflowButton().css({
+            "pointer-events": "none",
+            "opacity": "0.4",
+            "cursor": "not-allowed"
+        }).attr(
+            "title",
+            "Page locked by " + owner + ". Please unlock before starting workflow."
+        );
+    }
+
+    function getSelectedPaths() {
+        var paths = [];
+
+        $(".foundation-selections-item").each(function () {
+            var path = $(this).data("foundationCollectionItemId") ||
+                       $(this).data("path") ||
+                       $(this).attr("data-foundation-collection-item-id") ||
+                       $(this).attr("data-path");
+
+            if (path) {
+                paths.push(path);
+            }
+        });
+
+        return paths;
+    }
+
+    function checkWorkflowLock() {
+        setTimeout(function () {
+            enableWorkflow();
+
+            var selectedPaths = getSelectedPaths();
+
+            if (!selectedPaths.length) {
+                return;
+            }
+
+            var path = selectedPaths[0];
+
+            $.getJSON(path + "/jcr:content.json").done(function (data) {
+                if (data["jcr:lockOwner"]) {
+                    disableWorkflow(data["jcr:lockOwner"]);
+                } else {
+                    enableWorkflow();
+                }
+            }).fail(function () {
+                enableWorkflow();
+            });
+
+        }, 500);
+    }
+
+    $(document).on("click", ".foundation-collection-item", checkWorkflowLock);
+    $(document).on("foundation-selections-change", checkWorkflowLock);
+
+})(Granite.$);
