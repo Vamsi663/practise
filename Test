@@ -1,25 +1,23 @@
 (function ($, Granite) {
     "use strict";
 
-    var lockCache = {}; // cache lock status per path
+    var lockCache = {};
 
-    // Pre-fetch lock status when a page is SELECTED (before menu opens)
-    $(document).on("foundation-selections:change", function () {
-        lockCache = {}; // clear old cache
+    // Listen for clicks on page cards/items
+    $(document).on("click", ".foundation-collection-item", function () {
+        lockCache = {};
+        var path = $(this).data("foundationCollectionItemId") ||
+                   $(this).data("path");
 
-        $(".foundation-selections-item").each(function () {
-            var path = $(this).data("foundationCollectionItemId");
-            if (!path) return;
+        if (!path) return;
 
-            // Fetch and CACHE immediately on selection
-            $.getJSON(path + "/jcr:content.json").done(function (data) {
-                lockCache[path] = data["jcr:lockOwner"] || null;
-                console.log("Cached lock for", path, ":", lockCache[path]);
-            });
+        $.getJSON(path + "/jcr:content.json").done(function (data) {
+            lockCache[path] = data["jcr:lockOwner"] || null;
+            console.log("Cached:", path, lockCache[path]);
         });
     });
 
-    // When menu opens - use cache, NO AJAX delay
+    // Menu open — read from cache
     $(document).on("coral-overlay:open", function () {
         var checkId = Date.now();
         window._lastWorkflowCheckId = checkId;
@@ -30,21 +28,16 @@
             var $wf = $("a.cq-siteadmin-admin-createworkflow");
             if ($wf.length === 0) return;
 
-            // Reset
             $wf.removeAttr("style").removeAttr("title");
 
-            // Use cached value - no AJAX needed
-            var isLocked = false;
-            var lockOwner = "";
-
-            Object.keys(lockCache).forEach(function (path) {
-                if (lockCache[path]) {
-                    isLocked = true;
-                    lockOwner = lockCache[path];
-                }
+            var lockOwner = null;
+            Object.keys(lockCache).forEach(function (p) {
+                if (lockCache[p]) lockOwner = lockCache[p];
             });
 
-            if (isLocked) {
+            console.log("Menu open - lockOwner:", lockOwner);
+
+            if (lockOwner) {
                 $wf.css({
                     "pointer-events": "none",
                     "opacity": "0.4",
@@ -54,7 +47,6 @@
                     ". Please unlock before starting a workflow."
                 );
             }
-
         }, 150);
     });
 
