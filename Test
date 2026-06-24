@@ -1,72 +1,47 @@
-(function ($) {
+(function ($, Granite) {
     "use strict";
 
-    function getWorkflowButton() {
-        return $("cq-siteadmin-admin-createworkflow");
-    }
+    $(document).on("coral-overlay:open", function () {
+        var checkId = Date.now(); // unique ID for this open event
+        window._lastWorkflowCheckId = checkId;
 
-    function enableWorkflow() {
-        getWorkflowButton().css({
-            "pointer-events": "",
-            "opacity": "",
-            "cursor": ""
-        }).removeAttr("title");
-    }
-
-    function disableWorkflow(owner) {
-        getWorkflowButton().css({
-            "pointer-events": "none",
-            "opacity": "0.4",
-            "cursor": "not-allowed"
-        }).attr(
-            "title",
-            "Page locked by " + owner + ". Please unlock before starting workflow."
-        );
-    }
-
-    function getSelectedPaths() {
-        var paths = [];
-
-        $(".foundation-selections-item").each(function () {
-            var path = $(this).data("foundationCollectionItemId") ||
-                       $(this).data("path") ||
-                       $(this).attr("data-foundation-collection-item-id") ||
-                       $(this).attr("data-path");
-
-            if (path) {
-                paths.push(path);
-            }
-        });
-
-        return paths;
-    }
-
-    function checkWorkflowLock() {
         setTimeout(function () {
-            enableWorkflow();
+            if (window._lastWorkflowCheckId !== checkId) return;
 
-            var selectedPaths = getSelectedPaths();
+            var $wf = $("a.cq-siteadmin-admin-createworkflow");
+            if ($wf.length === 0) return;
 
-            if (!selectedPaths.length) {
-                return;
-            }
+            // Reset immediately
+            $wf.removeAttr("style").removeAttr("title");
 
-            var path = selectedPaths[0];
-
-            $.getJSON(path + "/jcr:content.json").done(function (data) {
-                if (data["jcr:lockOwner"]) {
-                    disableWorkflow(data["jcr:lockOwner"]);
-                } else {
-                    enableWorkflow();
-                }
-            }).fail(function () {
-                enableWorkflow();
+            var selectedPaths = [];
+            $(".foundation-selections-item").each(function () {
+                var itemId = $(this).data("foundationCollectionItemId");
+                if (itemId) selectedPaths.push(itemId);
             });
 
-        }, 500);
-    }
+            if (selectedPaths.length === 0) return;
 
-    $(document).on("click", ".foundation-collection-item", checkWorkflowLock);
-    $(document).on("foundation-selections-change", checkWorkflowLock);
+            selectedPaths.forEach(function (path) {
+                $.getJSON(path + "/jcr:content.json").done(function (data) {
+                    // Only apply if this is still the latest check
+                    if (window._lastWorkflowCheckId !== checkId) return;
 
-})(Granite.$);
+                    if (data["jcr:lockOwner"]) {
+                        $("a.cq-siteadmin-admin-createworkflow")
+                            .css({
+                                "pointer-events": "none",
+                                "opacity": "0.4",
+                                "cursor": "not-allowed"
+                            })
+                            .attr("title",
+                                "Locked by: " + data["jcr:lockOwner"] +
+                                ". Please unlock before starting a workflow."
+                            );
+                    }
+                });
+            });
+        }, 400);
+    });
+
+}(Granite.$, Granite));
