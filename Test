@@ -1,32 +1,5 @@
-$(document).on("coral-columnview:activeitemchange", function (e) {
-    lockCache = {};
-
-    // Get path from the rightmost selected item in column view
-    var path = null;
-
-    // Try selected item first
-    var $selected = $(".foundation-selections-item").last();
-    if ($selected.length) {
-        path = $selected.data("foundationCollectionItemId");
-    }
-
-    // Fallback: active item in column view
-    if (!path) {
-        var $activeItem = $("coral-columnview-item[selected]").last();
-        path = $activeItem.data("foundationCollectionItemId") ||
-               $activeItem.attr("data-foundation-collection-item-id");
-    }
-
-    // Fallback: URL
-    if (!path) {
-        path = window.location.pathname.replace("/sites.html", "");
-    }
-
-    console.log("Pre-fetching lock for:", path);
-    if (!path) return;
-
-    $.getJSON(path + "/jcr:content.json").done(function (data) {
-        lockCache[path] = data["jcr:lockOwner"] || null;
-        console.log("Lock cached:", path, "->", lockCache[path]);
-    });
+$(document).on("coral-overlay:open", function () {
+    console.log("Overlay opened");
+    console.log("WF element:", $("a.cq-siteadmin-admin-createworkflow").length);
+    console.log("Cache:", JSON.stringify(window._lockCache));
 });
