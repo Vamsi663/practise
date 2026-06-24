@@ -1,60 +1,32 @@
-(function ($, Granite) {
-    "use strict";
+$(document).on("coral-columnview:activeitemchange", function (e) {
+    lockCache = {};
 
-    var lockCache = {};
+    // Get path from the rightmost selected item in column view
+    var path = null;
 
-    // Pre-fetch on page selection - correct event
-    $(document).on("coral-columnview:activeitemchange", function (e) {
-        lockCache = {};
+    // Try selected item first
+    var $selected = $(".foundation-selections-item").last();
+    if ($selected.length) {
+        path = $selected.data("foundationCollectionItemId");
+    }
 
-        var $active = $(e.target).find("[data-foundation-collection-item-id]").last();
-        var path = $active.data("foundationCollectionItemId");
+    // Fallback: active item in column view
+    if (!path) {
+        var $activeItem = $("coral-columnview-item[selected]").last();
+        path = $activeItem.data("foundationCollectionItemId") ||
+               $activeItem.attr("data-foundation-collection-item-id");
+    }
 
-        if (!path) {
-            // Fallback - get from URL
-            path = window.location.pathname.replace("/sites.html", "");
-        }
+    // Fallback: URL
+    if (!path) {
+        path = window.location.pathname.replace("/sites.html", "");
+    }
 
-        if (!path) return;
+    console.log("Pre-fetching lock for:", path);
+    if (!path) return;
 
-        console.log("Pre-fetching lock for:", path);
-        $.getJSON(path + "/jcr:content.json").done(function (data) {
-            lockCache[path] = data["jcr:lockOwner"] || null;
-            console.log("Lock cached:", path, "->", lockCache[path]);
-        });
+    $.getJSON(path + "/jcr:content.json").done(function (data) {
+        lockCache[path] = data["jcr:lockOwner"] || null;
+        console.log("Lock cached:", path, "->", lockCache[path]);
     });
-
-    // Menu open - instant, no AJAX
-    $(document).on("coral-overlay:open", function () {
-        var checkId = Date.now();
-        window._lastWorkflowCheckId = checkId;
-
-        setTimeout(function () {
-            if (window._lastWorkflowCheckId !== checkId) return;
-
-            var $wf = $("a.cq-siteadmin-admin-createworkflow");
-            if ($wf.length === 0) return;
-
-            $wf.removeAttr("style").removeAttr("title");
-
-            var lockOwner = null;
-            Object.keys(lockCache).forEach(function (p) {
-                if (lockCache[p]) lockOwner = lockCache[p];
-            });
-
-            console.log("Menu open - using cached lockOwner:", lockOwner);
-
-            if (lockOwner) {
-                $wf.css({
-                    "pointer-events": "none",
-                    "opacity": "0.4",
-                    "cursor": "not-allowed"
-                }).attr("title",
-                    "Locked by: " + lockOwner +
-                    ". Please unlock before starting a workflow."
-                );
-            }
-        }, 150);
-    });
-
-}(Granite.$, Granite));
+});
