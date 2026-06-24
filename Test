@@ -1,53 +1,11 @@
-(function ($, Granite) {
-    "use strict";
+// Monitor ALL events on document
+var events = ["click", "mouseup", "foundation-selections:change", 
+              "foundation-collection:change", "coral-collection:change",
+              "foundation-contentloaded", "coral-columnview:change",
+              "coral-columnview:activeitemchange"];
 
-    var lockCache = {};
-
-    // Listen for clicks on page cards/items
-    $(document).on("click", ".foundation-collection-item", function () {
-        lockCache = {};
-        var path = $(this).data("foundationCollectionItemId") ||
-                   $(this).data("path");
-
-        if (!path) return;
-
-        $.getJSON(path + "/jcr:content.json").done(function (data) {
-            lockCache[path] = data["jcr:lockOwner"] || null;
-            console.log("Cached:", path, lockCache[path]);
-        });
+events.forEach(function(evt) {
+    $(document).on(evt, function() {
+        console.log("EVENT FIRED:", evt);
     });
-
-    // Menu open — read from cache
-    $(document).on("coral-overlay:open", function () {
-        var checkId = Date.now();
-        window._lastWorkflowCheckId = checkId;
-
-        setTimeout(function () {
-            if (window._lastWorkflowCheckId !== checkId) return;
-
-            var $wf = $("a.cq-siteadmin-admin-createworkflow");
-            if ($wf.length === 0) return;
-
-            $wf.removeAttr("style").removeAttr("title");
-
-            var lockOwner = null;
-            Object.keys(lockCache).forEach(function (p) {
-                if (lockCache[p]) lockOwner = lockCache[p];
-            });
-
-            console.log("Menu open - lockOwner:", lockOwner);
-
-            if (lockOwner) {
-                $wf.css({
-                    "pointer-events": "none",
-                    "opacity": "0.4",
-                    "cursor": "not-allowed"
-                }).attr("title",
-                    "Locked by: " + lockOwner +
-                    ". Please unlock before starting a workflow."
-                );
-            }
-        }, 150);
-    });
-
-}(Granite.$, Granite));
+});
