@@ -1,15 +1,34 @@
-// Check if there's a form
-$("coral-dialog form").length
-$("coral-dialog form").attr("action")
-$("coral-dialog form").attr("method")
+// WORKFLOW MODELS CONSOLE
+$(document).on("click", function (e) {
+    var $clicked = $(e.target).closest("button, [is='coral-button']");
+    if ($clicked.length === 0) return;
+    if ($clicked.text().trim() !== "Run") return;
 
-// Check the Run button's parent structure
-$("coral-dialog button").filter(function() {
-    return $(this).text().trim() === "Run";
-}).closest("form").attr("action")
+    var payloadPath = $("input[name='payload']").val();
+    if (!payloadPath) return;
 
-// Find all click handlers on the Run button
-var btn = $("coral-dialog button").filter(function() {
-    return $(this).text().trim() === "Run";
-})[0];
-$._data(btn, "events");
+    e.stopImmediatePropagation();
+    e.preventDefault();
+
+    $.getJSON(payloadPath + "/jcr:content.json")
+        .done(function (data) {
+            if (data["jcr:lockOwner"]) {
+                var ui = $(window).adaptTo("foundation-ui");
+                if (ui) {
+                    ui.alert(
+                        "Workflow Blocked",
+                        "Page is locked by '" + data["jcr:lockOwner"] +
+                        "'. Please unlock before running a workflow.",
+                        "error"
+                    );
+                }
+            } else {
+                // NOT locked - submit form directly
+                $("coral-dialog form")[0].submit();
+            }
+        })
+        .fail(function () {
+            // Path not a page - submit anyway
+            $("coral-dialog form")[0].submit();
+        });
+});
