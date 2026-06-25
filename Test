@@ -1,4 +1,1 @@
-// Check what event fires when Timeline opens
-$(document).on("click", function(e) {
-    console.log("clicked:", e.target.className);
-});
+$("button.cq-siteadmin-admin-createworkflow").prop("disabled", true);
