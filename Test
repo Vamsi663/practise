@@ -1,4 +1,4 @@
-// WORKFLOW MODELS CONSOLE - Validate on Run
+// WORKFLOW MODELS CONSOLE
 $(document).on("click", function (e) {
     var $clicked = $(e.target).closest("button, [is='coral-button']");
     if ($clicked.length === 0) return;
@@ -7,26 +7,42 @@ $(document).on("click", function (e) {
     var payloadPath = $("input[name='payload']").val();
     if (!payloadPath) return;
 
+    // Only block if we already know it's locked
+    // First check asynchronously
     e.stopImmediatePropagation();
     e.preventDefault();
 
-    $.getJSON(payloadPath + "/jcr:content.json").done(function (data) {
-        if (data["jcr:lockOwner"]) {
-            var ui = $(window).adaptTo("foundation-ui");
-            if (ui) {
-                ui.alert(
-                    "Workflow Blocked",
-                    "Page is locked by '" + data["jcr:lockOwner"] +
-                    "'. Please unlock before running a workflow.",
-                    "error"
-                );
+    $.getJSON(payloadPath + "/jcr:content.json")
+        .done(function (data) {
+            if (data["jcr:lockOwner"]) {
+                // LOCKED - show error, do nothing
+                var ui = $(window).adaptTo("foundation-ui");
+                if (ui) {
+                    ui.alert(
+                        "Workflow Blocked",
+                        "Page is locked by '" + data["jcr:lockOwner"] +
+                        "'. Please unlock before running a workflow.",
+                        "error"
+                    );
+                }
+            } else {
+                // NOT locked - submit the form directly
+                var $form = $clicked.closest("form");
+                if ($form.length) {
+                    $form.submit();
+                } else {
+                    // Fallback - trigger native click on the button element
+                    $clicked[0].click();
+                }
             }
-        } else {
-            // Not locked - proceed with original Run action
-            $clicked.off("click").trigger("click");
-        }
-    }).fail(function () {
-        // Path invalid or not a page - let it proceed
-        $clicked.off("click").trigger("click");
-    });
+        })
+        .fail(function () {
+            // AJAX failed - let it proceed via form submit
+            var $form = $clicked.closest("form");
+            if ($form.length) {
+                $form.submit();
+            } else {
+                $clicked[0].click();
+            }
+        });
 });
