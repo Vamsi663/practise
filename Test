@@ -1,41 +1,32 @@
-// TIMELINE PANEL
-$(document).on("coral-columnview:activeitemchange click", function () {
-    var checkId = Date.now();
-    window._lastTimelineCheckId = checkId;
+// WORKFLOW MODELS CONSOLE - Validate on Run
+$(document).on("click", function (e) {
+    var $clicked = $(e.target).closest("button, [is='coral-button']");
+    if ($clicked.length === 0) return;
+    if ($clicked.text().trim() !== "Run") return;
 
-    setTimeout(function () {
-        if (window._lastTimelineCheckId !== checkId) return;
+    var payloadPath = $("input[name='payload']").val();
+    if (!payloadPath) return;
 
-        var $btn = $("button.cq-siteadmin-admin-createworkflow");
-        if ($btn.length === 0) return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
 
-        // Reset first
-        $btn.prop("disabled", false)
-            .removeAttr("title")
-            .removeClass("is-disabled");
-
-        var selectedPaths = [];
-        $(".foundation-selections-item").each(function () {
-            var itemId = $(this).data("foundationCollectionItemId");
-            if (itemId) selectedPaths.push(itemId);
-        });
-
-        if (selectedPaths.length === 0) return;
-
-        var pathsSnapshot = selectedPaths.slice();
-        pathsSnapshot.forEach(function (path) {
-            $.getJSON(path + "/jcr:content.json").done(function (data) {
-                if (window._lastTimelineCheckId !== checkId) return;
-                if (data["jcr:lockOwner"]) {
-                    $("button.cq-siteadmin-admin-createworkflow")
-                        .prop("disabled", true)
-                        .addClass("is-disabled")
-                        .attr("title",
-                            "Locked by: " + data["jcr:lockOwner"] +
-                            ". Please unlock before starting a workflow."
-                        );
-                }
-            });
-        });
-    }, 400);
+    $.getJSON(payloadPath + "/jcr:content.json").done(function (data) {
+        if (data["jcr:lockOwner"]) {
+            var ui = $(window).adaptTo("foundation-ui");
+            if (ui) {
+                ui.alert(
+                    "Workflow Blocked",
+                    "Page is locked by '" + data["jcr:lockOwner"] +
+                    "'. Please unlock before running a workflow.",
+                    "error"
+                );
+            }
+        } else {
+            // Not locked - proceed with original Run action
+            $clicked.off("click").trigger("click");
+        }
+    }).fail(function () {
+        // Path invalid or not a page - let it proceed
+        $clicked.off("click").trigger("click");
+    });
 });
