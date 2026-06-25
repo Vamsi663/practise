@@ -1,1 +1,41 @@
-$("button.cq-siteadmin-admin-createworkflow").prop("disabled", true);
+// TIMELINE PANEL
+$(document).on("coral-columnview:activeitemchange click", function () {
+    var checkId = Date.now();
+    window._lastTimelineCheckId = checkId;
+
+    setTimeout(function () {
+        if (window._lastTimelineCheckId !== checkId) return;
+
+        var $btn = $("button.cq-siteadmin-admin-createworkflow");
+        if ($btn.length === 0) return;
+
+        // Reset first
+        $btn.prop("disabled", false)
+            .removeAttr("title")
+            .removeClass("is-disabled");
+
+        var selectedPaths = [];
+        $(".foundation-selections-item").each(function () {
+            var itemId = $(this).data("foundationCollectionItemId");
+            if (itemId) selectedPaths.push(itemId);
+        });
+
+        if (selectedPaths.length === 0) return;
+
+        var pathsSnapshot = selectedPaths.slice();
+        pathsSnapshot.forEach(function (path) {
+            $.getJSON(path + "/jcr:content.json").done(function (data) {
+                if (window._lastTimelineCheckId !== checkId) return;
+                if (data["jcr:lockOwner"]) {
+                    $("button.cq-siteadmin-admin-createworkflow")
+                        .prop("disabled", true)
+                        .addClass("is-disabled")
+                        .attr("title",
+                            "Locked by: " + data["jcr:lockOwner"] +
+                            ". Please unlock before starting a workflow."
+                        );
+                }
+            });
+        });
+    }, 400);
+});
