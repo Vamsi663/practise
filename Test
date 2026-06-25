@@ -1,36 +1,66 @@
-// TIMELINE PANEL - Start Workflow button
-$(document).on("click", ".cq-common-admin-timeline-toolbar-actions-main", function () {
-    setTimeout(function () {
-        var $btn = $("button.cq-siteadmin-admin-createworkflow");
-        if ($btn.length === 0) return;
+(function ($, Granite) {
+    "use strict";
 
-        var selectedPaths = [];
-        $(".foundation-selections-item").each(function () {
-            var itemId = $(this).data("foundationCollectionItemId");
-            if (itemId) selectedPaths.push(itemId);
+    // PAGE EDITOR
+    function disableWorkflowIfLocked() {
+        if (!Granite.author || !Granite.author.ContentFrame) return;
+        var pagePath = Granite.author.ContentFrame.getContentPath();
+        if (!pagePath) return;
+
+        $.getJSON(pagePath + "/jcr:content.json").done(function (data) {
+            if (data["jcr:lockOwner"]) {
+                $("[class*='WorkflowStart']")
+                    .closest("coral-button, button")
+                    .attr("disabled", "disabled")
+                    .addClass("is-disabled");
+            }
         });
+    }
 
-        if (selectedPaths.length === 0) return;
+    $(document).on("click", "#pageinfo-trigger", function () {
+        setTimeout(disableWorkflowIfLocked, 300);
+    });
 
+    // SITES CONSOLE
+    $(document).on("coral-overlay:open", function () {
         var checkId = Date.now();
-        window._lastTimelineCheckId = checkId;
+        window._lastWorkflowCheckId = checkId;
 
-        // Reset first
-        $btn.removeAttr("disabled").removeClass("is-disabled");
+        setTimeout(function () {
+            if (window._lastWorkflowCheckId !== checkId) return;
 
-        selectedPaths.forEach(function (path) {
-            $.getJSON(path + "/jcr:content.json").done(function (data) {
-                if (window._lastTimelineCheckId !== checkId) return;
-                if (data["jcr:lockOwner"]) {
-                    $("button.cq-siteadmin-admin-createworkflow")
-                        .attr("disabled", "disabled")
-                        .addClass("is-disabled")
-                        .attr("title",
-                            "Locked by: " + data["jcr:lockOwner"] +
-                            ". Please unlock before starting a workflow."
-                        );
-                }
+            var $wf = $("a.cq-siteadmin-admin-createworkflow");
+            if ($wf.length === 0) return;
+
+            $wf.removeAttr("style").removeAttr("title");
+
+            var selectedPaths = [];
+            $(".foundation-selections-item").each(function () {
+                var itemId = $(this).data("foundationCollectionItemId");
+                if (itemId) selectedPaths.push(itemId);
             });
-        });
-    }, 400);
-});
+
+            if (selectedPaths.length === 0) return;
+
+            var pathsSnapshot = selectedPaths.slice();
+            pathsSnapshot.forEach(function (path) {
+                $.getJSON(path + "/jcr:content.json").done(function (data) {
+                    if (window._lastWorkflowCheckId !== checkId) return;
+                    if (data["jcr:lockOwner"]) {
+                        $("a.cq-siteadmin-admin-createworkflow")
+                            .css({
+                                "pointer-events": "none",
+                                "opacity": "0.4",
+                                "cursor": "not-allowed"
+                            })
+                            .attr("title",
+                                "Locked by: " + data["jcr:lockOwner"] +
+                                ". Please unlock before starting a workflow."
+                            );
+                    }
+                });
+            });
+        }, 400);
+    });
+
+}(Granite.$, Granite));
