@@ -1,66 +1,39 @@
-(function ($, Granite) {
-    "use strict";
+// TIMELINE PANEL
+$(document).on("click", ".cq-common-admin-timeline-toggleable, .cq-common-admin-timeline-toolbar-actions-main", function () {
+    var checkId = Date.now();
+    window._lastTimelineCheckId = checkId;
 
-    // PAGE EDITOR
-    function disableWorkflowIfLocked() {
-        if (!Granite.author || !Granite.author.ContentFrame) return;
-        var pagePath = Granite.author.ContentFrame.getContentPath();
-        if (!pagePath) return;
+    setTimeout(function () {
+        if (window._lastTimelineCheckId !== checkId) return;
 
-        $.getJSON(pagePath + "/jcr:content.json").done(function (data) {
-            if (data["jcr:lockOwner"]) {
-                $("[class*='WorkflowStart']")
-                    .closest("coral-button, button")
-                    .attr("disabled", "disabled")
-                    .addClass("is-disabled");
-            }
+        var $btn = $("button.cq-siteadmin-admin-createworkflow");
+        if ($btn.length === 0) return;
+
+        // Reset first
+        $btn.removeAttr("disabled").removeAttr("title").removeClass("is-disabled");
+
+        var selectedPaths = [];
+        $(".foundation-selections-item").each(function () {
+            var itemId = $(this).data("foundationCollectionItemId");
+            if (itemId) selectedPaths.push(itemId);
         });
-    }
 
-    $(document).on("click", "#pageinfo-trigger", function () {
-        setTimeout(disableWorkflowIfLocked, 300);
-    });
+        if (selectedPaths.length === 0) return;
 
-    // SITES CONSOLE
-    $(document).on("coral-overlay:open", function () {
-        var checkId = Date.now();
-        window._lastWorkflowCheckId = checkId;
-
-        setTimeout(function () {
-            if (window._lastWorkflowCheckId !== checkId) return;
-
-            var $wf = $("a.cq-siteadmin-admin-createworkflow");
-            if ($wf.length === 0) return;
-
-            $wf.removeAttr("style").removeAttr("title");
-
-            var selectedPaths = [];
-            $(".foundation-selections-item").each(function () {
-                var itemId = $(this).data("foundationCollectionItemId");
-                if (itemId) selectedPaths.push(itemId);
+        selectedPaths.forEach(function (path) {
+            $.getJSON(path + "/jcr:content.json").done(function (data) {
+                if (window._lastTimelineCheckId !== checkId) return;
+                if (data["jcr:lockOwner"]) {
+                    $("button.cq-siteadmin-admin-createworkflow")
+                        .attr("disabled", "disabled")
+                        .addClass("is-disabled")
+                        .attr("title",
+                            "Locked by: " + data["jcr:lockOwner"] +
+                            ". Please unlock before starting a workflow."
+                        );
+                }
             });
+        });
 
-            if (selectedPaths.length === 0) return;
-
-            var pathsSnapshot = selectedPaths.slice();
-            pathsSnapshot.forEach(function (path) {
-                $.getJSON(path + "/jcr:content.json").done(function (data) {
-                    if (window._lastWorkflowCheckId !== checkId) return;
-                    if (data["jcr:lockOwner"]) {
-                        $("a.cq-siteadmin-admin-createworkflow")
-                            .css({
-                                "pointer-events": "none",
-                                "opacity": "0.4",
-                                "cursor": "not-allowed"
-                            })
-                            .attr("title",
-                                "Locked by: " + data["jcr:lockOwner"] +
-                                ". Please unlock before starting a workflow."
-                            );
-                    }
-                });
-            });
-        }, 400);
-    });
-
-}(Granite.$, Granite));
+    }, 400);
+});
