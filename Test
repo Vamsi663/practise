@@ -1,48 +1,15 @@
-// WORKFLOW MODELS CONSOLE
-$(document).on("click", function (e) {
-    var $clicked = $(e.target).closest("button, [is='coral-button']");
-    if ($clicked.length === 0) return;
-    if ($clicked.text().trim() !== "Run") return;
+// Check if there's a form
+$("coral-dialog form").length
+$("coral-dialog form").attr("action")
+$("coral-dialog form").attr("method")
 
-    var payloadPath = $("input[name='payload']").val();
-    if (!payloadPath) return;
+// Check the Run button's parent structure
+$("coral-dialog button").filter(function() {
+    return $(this).text().trim() === "Run";
+}).closest("form").attr("action")
 
-    // Only block if we already know it's locked
-    // First check asynchronously
-    e.stopImmediatePropagation();
-    e.preventDefault();
-
-    $.getJSON(payloadPath + "/jcr:content.json")
-        .done(function (data) {
-            if (data["jcr:lockOwner"]) {
-                // LOCKED - show error, do nothing
-                var ui = $(window).adaptTo("foundation-ui");
-                if (ui) {
-                    ui.alert(
-                        "Workflow Blocked",
-                        "Page is locked by '" + data["jcr:lockOwner"] +
-                        "'. Please unlock before running a workflow.",
-                        "error"
-                    );
-                }
-            } else {
-                // NOT locked - submit the form directly
-                var $form = $clicked.closest("form");
-                if ($form.length) {
-                    $form.submit();
-                } else {
-                    // Fallback - trigger native click on the button element
-                    $clicked[0].click();
-                }
-            }
-        })
-        .fail(function () {
-            // AJAX failed - let it proceed via form submit
-            var $form = $clicked.closest("form");
-            if ($form.length) {
-                $form.submit();
-            } else {
-                $clicked[0].click();
-            }
-        });
-});
+// Find all click handlers on the Run button
+var btn = $("coral-dialog button").filter(function() {
+    return $(this).text().trim() === "Run";
+})[0];
+$._data(btn, "events");
