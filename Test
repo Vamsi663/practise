@@ -1,11 +1,16 @@
-// WORKFLOW MODELS CONSOLE
+// Flag to track if lock check is done
+window._workflowLockChecked = false;
+
 $(document).on("click", function (e) {
     var $clicked = $(e.target).closest("button, [is='coral-button']");
     if ($clicked.length === 0) return;
     if ($clicked.text().trim() !== "Run") return;
 
-    var $form = $("coral-dialog form");
-    if ($form.length === 0) return;
+    // If already checked and approved - let it through
+    if (window._workflowLockChecked) {
+        window._workflowLockChecked = false;
+        return;
+    }
 
     var payloadPath = $("input[name='payload']").val();
     if (!payloadPath) return;
@@ -26,40 +31,13 @@ $(document).on("click", function (e) {
                     );
                 }
             } else {
-                // Submit via AJAX to avoid page navigation
-                $.ajax({
-                    url: $form.attr("action"),
-                    method: "POST",
-                    data: $form.serialize(),
-                    success: function () {
-                        // Close dialog and show success
-                        $("coral-dialog")[0].hide();
-                        var ui = $(window).adaptTo("foundation-ui");
-                        if (ui) {
-                            ui.notify("success", "Workflow started successfully.");
-                        }
-                    },
-                    error: function (err) {
-                        var ui = $(window).adaptTo("foundation-ui");
-                        if (ui) {
-                            ui.alert("Error", "Failed to start workflow: " + err.statusText, "error");
-                        }
-                    }
-                });
+                // Set flag then trigger native click
+                window._workflowLockChecked = true;
+                $clicked[0].click();
             }
         })
         .fail(function () {
-            $.ajax({
-                url: $form.attr("action"),
-                method: "POST",
-                data: $form.serialize(),
-                success: function () {
-                    $("coral-dialog")[0].hide();
-                    var ui = $(window).adaptTo("foundation-ui");
-                    if (ui) {
-                        ui.notify("success", "Workflow started successfully.");
-                    }
-                }
-            });
+            window._workflowLockChecked = true;
+            $clicked[0].click();
         });
 });
