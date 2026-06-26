@@ -1,12 +1,34 @@
-// Find all buttons in the dialog
-$("coral-dialog button, .coral-Dialog button").each(function() {
-    console.log("Button text:", $(this).text().trim(), "Class:", $(this).className);
-});
+function checkWorkflowIfLocked() {
+    if (!Granite.author || !Granite.author.ContentFrame) return;
+    var pagePath = Granite.author.ContentFrame.getContentPath();
+    if (!pagePath) return;
 
-// Check the Start Workflow button specifically
-$(".cq-dialog-submit").length
-$(".cq-dialog-submit").text()
+    // Get the iframe's jQuery
+    var $iframe = Granite.author.ContentFrame.getContentFrame();
+    var iframeDoc = $iframe[0].contentDocument || $iframe[0].contentWindow.document;
+    var $$ = $(iframeDoc);
 
-$("[coral-close], .cq-dialog-cancel").length
-$("[coral-close], .cq-dialog-cancel").text()
+    // Listen on iframe document
+    $$(iframeDoc).off("click.workflowLock")
+        .on("click.workflowLock", ".cq-dialog-submit", function (e) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
 
+            $.getJSON(pagePath + "/jcr:content.json").done(function (data) {
+                if (data["jcr:lockOwner"]) {
+                    // Close dialog in iframe
+                    $$(iframeDoc).find("coral-dialog[open]").each(function() {
+                        this.hide();
+                    });
+                    showLockAlert(data["jcr:lockOwner"]);
+                } else {
+                    // Not locked - re-trigger
+                    $$(iframeDoc).find(".cq-dialog-submit")
+                        .off("click.workflowLock")[0].click();
+                }
+            }).fail(function () {
+                $$(iframeDoc).find(".cq-dialog-submit")
+                    .off("click.workflowLock")[0].click();
+            });
+        });
+}
