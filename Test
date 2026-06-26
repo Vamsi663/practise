@@ -1,34 +1,27 @@
-function checkWorkflowIfLocked() {
-    if (!Granite.author || !Granite.author.ContentFrame) return;
-    var pagePath = Granite.author.ContentFrame.getContentPath();
-    if (!pagePath) return;
+// PAGE EDITOR - intercept BEFORE dialog opens
+$(document).on("click", ".js-editor-PageInfo-closePopover", function () {
+    setTimeout(function () {
+        if (!Granite.author || !Granite.author.ContentFrame) return;
+        var pagePath = Granite.author.ContentFrame.getContentPath();
+        if (!pagePath) return;
 
-    // Get the iframe's jQuery
-    var $iframe = Granite.author.ContentFrame.getContentFrame();
-    var iframeDoc = $iframe[0].contentDocument || $iframe[0].contentWindow.document;
-    var $$ = $(iframeDoc);
+        $.getJSON(pagePath + "/jcr:content.json").done(function (data) {
+            if (data["jcr:lockOwner"]) {
+                // Close any open dialogs
+                document.querySelectorAll("coral-dialog[open]")
+                    .forEach(function(d) { d.hide(); });
 
-    // Listen on iframe document
-    $$(iframeDoc).off("click.workflowLock")
-        .on("click.workflowLock", ".cq-dialog-submit", function (e) {
-            e.stopImmediatePropagation();
-            e.preventDefault();
-
-            $.getJSON(pagePath + "/jcr:content.json").done(function (data) {
-                if (data["jcr:lockOwner"]) {
-                    // Close dialog in iframe
-                    $$(iframeDoc).find("coral-dialog[open]").each(function() {
-                        this.hide();
-                    });
-                    showLockAlert(data["jcr:lockOwner"]);
-                } else {
-                    // Not locked - re-trigger
-                    $$(iframeDoc).find(".cq-dialog-submit")
-                        .off("click.workflowLock")[0].click();
-                }
-            }).fail(function () {
-                $$(iframeDoc).find(".cq-dialog-submit")
-                    .off("click.workflowLock")[0].click();
-            });
+                // Show error instead
+                showLockAlert(data["jcr:lockOwner"]);
+            }
+            // If not locked - do nothing, dialog opens normally
         });
-}
+    }, 500);
+});
+// Check what element is clicked when you click "Start Workflow" 
+// in the Page Info menu
+$(document).on("click", function(e) {
+    console.log("clicked:", e.target.className, e.target.tagName);
+});
+
+
