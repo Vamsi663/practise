@@ -1,53 +1,146 @@
-// PAGE EDITOR
-$(document).on("click", ".js-editor-WorkflowStart-activator", function (e) {
-    if (!Granite.author || !Granite.author.ContentFrame) return;
-    var pagePath = Granite.author.ContentFrame.getContentPath();
-    if (!pagePath) return;
+(function ($, Granite) {
+    "use strict";
 
-    e.stopImmediatePropagation();
-    e.preventDefault();
-
-    $.getJSON(pagePath + "/jcr:content.json").done(function (data) {
-        if (data["jcr:lockOwner"]) {
-            showLockAlert(data["jcr:lockOwner"]);
-        } else {
-            // Temporarily remove handler, click, restore
-            $(document).off("click", ".js-editor-WorkflowStart-activator");
-            $(".js-editor-WorkflowStart-activator")[0].click();
-            setTimeout(function () {
-                attachPageEditorInterceptor();
-            }, 500);
+    // Reusable alert
+    function showLockAlert(lockOwner) {
+        document.querySelectorAll("coral-dialog[open]")
+            .forEach(function (d) { d.hide(); });
+        var ui = $(window).adaptTo("foundation-ui");
+        if (ui) {
+            ui.alert(
+                "Workflow Blocked",
+                "This page is locked by '" + lockOwner +
+                "'. Please unlock before starting a workflow.",
+                "error"
+            );
         }
-    }).fail(function () {
-        $(document).off("click", ".js-editor-WorkflowStart-activator");
-        $(".js-editor-WorkflowStart-activator")[0].click();
-        setTimeout(attachPageEditorInterceptor, 500);
+    }
+
+    // Reusable lock check
+    function checkLock(path, onLocked, onUnlocked) {
+        $.getJSON(path + "/jcr:content.json")
+            .done(function (data) {
+                if (data["jcr:lockOwner"]) {
+                    onLocked(data["jcr:lockOwner"]);
+                } else {
+                    onUnlocked();
+                }
+            })
+            .fail(onUnlocked);
+    }
+
+    // ==========================================
+    // PAGE EDITOR
+    // ==========================================
+    $(document).on("click", ".js-editor-WorkflowStart-activator", function (e) {
+        if (!Granite.author || !Granite.author.ContentFrame) return;
+        var pagePath = Granite.author.ContentFrame.getContentPath();
+        if (!pagePath) return;
+
+        e.stopImmediatePropagation();
+        e.preventDefault();
+
+        checkLock(pagePath,
+            function (owner) {
+                showLockAlert(owner);
+            },
+            function () {
+                $(document).off("click.pgEditor");
+                $(".js-editor-WorkflowStart-activator")[0].click();
+                setTimeout(function () {
+                    $(document).on("click.pgEditor",
+                        ".js-editor-WorkflowStart-activator",
+                        arguments.callee);
+                }, 500);
+            }
+        );
     });
-});
 
-function attachPageEditorInterceptor() {
-    $(document).on("click", ".js-editor-WorkflowStart-activator", pageEditorWorkflowCheck);
-}
+    // ==========================================
+    // SITES CONSOLE
+    // ==========================================
+    $(document).on("coral-overlay:open", function () {
+        var checkId = Date.now();
+        window._wfCheckId = checkId;
 
-function pageEditorWorkflowCheck(e) {
-    if (!Granite.author || !Granite.author.ContentFrame) return;
-    var pagePath = Granite.author.ContentFrame.getContentPath();
-    if (!pagePath) return;
+        setTimeout(function () {
+            if (window._wfCheckId !== checkId) return;
 
-    e.stopImmediatePropagation();
-    e.preventDefault();
+            var $wf = $("a.cq-siteadmin-admin-createworkflow");
+            if ($wf.length === 0) return;
 
-    $.getJSON(pagePath + "/jcr:content.json").done(function (data) {
-        if (data["jcr:lockOwner"]) {
-            showLockAlert(data["jcr:lockOwner"]);
-        } else {
-            $(document).off("click", ".js-editor-WorkflowStart-activator");
-            $(".js-editor-WorkflowStart-activator")[0].click();
-            setTimeout(attachPageEditorInterceptor, 500);
-        }
-    }).fail(function () {
-        $(document).off("click", ".js-editor-WorkflowStart-activator");
-        $(".js-editor-WorkflowStart-activator")[0].click();
-        setTimeout(attachPageEditorInterceptor, 500);
+            var path = $(".foundation-selections-item").first()
+                .data("foundationCollectionItemId");
+            if (!path) return;
+
+            $wf.off("click.sites")
+               .on("click.sites", function (e) {
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                    checkLock(path,
+                        showLockAlert,
+                        function () {
+                            $wf.off("click.sites")[0].click();
+                        }
+                    );
+                });
+        }, 400);
     });
-}
+
+    // ==========================================
+    // TIMELINE
+    // ==========================================
+    $(document).on("coral-columnview:activeitemchange click", function () {
+        var checkId = Date.now();
+        window._tlCheckId = checkId;
+
+        setTimeout(function () {
+            if (window._tlCheckId !== checkId) return;
+
+            var $btn = $("button.cq-siteadmin-admin-createworkflow");
+            if ($btn.length === 0) return;
+
+            var path = $(".foundation-selections-item").first()
+                .data("foundationCollectionItemId");
+            if (!path) return;
+
+            $btn.off("click.timeline")
+                .on("click.timeline", function (e) {
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                    checkLock(path,
+                        showLockAlert,
+                        function () {
+                            $btn.off("click.timeline")[0].click();
+                        }
+                    );
+                });
+        }, 400);
+    });
+
+    // ==========================================
+    // WORKFLOW MODELS CONSOLE
+    // ==========================================
+    window._wfApproved = false;
+
+    $(document).on("click", function (e) {
+        var $btn = $(e.target).closest("button, [is='coral-button']");
+        if ($btn.length === 0 || $btn.text().trim() !== "Run") return;
+        if (window._wfApproved) { window._wfApproved = false; return; }
+
+        var path = $("input[name='payload']").val();
+        if (!path) return;
+
+        e.stopImmediatePropagation();
+        e.preventDefault();
+
+        checkLock(path,
+            showLockAlert,
+            function () {
+                window._wfApproved = true;
+                setTimeout(function () { $btn[0].click(); }, 50);
+            }
+        );
+    });
+
+}(Granite.$, Granite));
