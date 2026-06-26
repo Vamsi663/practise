@@ -1,37 +1,12 @@
-function checkWorkflowIfLocked() {
-    if (!Granite.author || !Granite.author.ContentFrame) return;
-    var pagePath = Granite.author.ContentFrame.getContentPath();
-    if (!pagePath) return;
+// Find all buttons in the dialog
+$("coral-dialog button, .coral-Dialog button").each(function() {
+    console.log("Button text:", $(this).text().trim(), "Class:", $(this).className);
+});
 
-    // Only intercept the Start Workflow SUBMIT button
-    // Not the close/cancel buttons
-    $(document).off("click.workflowLock")
-        .on("click.workflowLock", 
-            ".cq-dialog-submit, button[class*='WorkflowStart']:not(.close):not([coral-close])", 
-            function (e) {
-                // Skip if it's a close/cancel button
-                var $btn = $(this);
-                if ($btn.hasClass("cq-dialog-cancel") || 
-                    $btn.attr("coral-close") !== undefined ||
-                    $btn.hasClass("close") ||
-                    $btn.text().trim() === "Close") {
-                    return; // Let close buttons work normally
-                }
+// Check the Start Workflow button specifically
+$(".cq-dialog-submit").length
+$(".cq-dialog-submit").text()
 
-                e.stopImmediatePropagation();
-                e.preventDefault();
+$("[coral-close], .cq-dialog-cancel").length
+$("[coral-close], .cq-dialog-cancel").text()
 
-                $.getJSON(pagePath + "/jcr:content.json").done(function (data) {
-                    if (data["jcr:lockOwner"]) {
-                        // Close workflow dialog first
-                        document.querySelectorAll("coral-dialog[open]")
-                            .forEach(function(d) { d.hide(); });
-                        showLockAlert(data["jcr:lockOwner"]);
-                    } else {
-                        $btn.off("click.workflowLock")[0].click();
-                    }
-                }).fail(function () {
-                    $btn.off("click.workflowLock")[0].click();
-                });
-            });
-}
