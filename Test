@@ -1,27 +1,53 @@
-// PAGE EDITOR - intercept BEFORE dialog opens
-$(document).on("click", ".js-editor-PageInfo-closePopover", function () {
-    setTimeout(function () {
-        if (!Granite.author || !Granite.author.ContentFrame) return;
-        var pagePath = Granite.author.ContentFrame.getContentPath();
-        if (!pagePath) return;
+// PAGE EDITOR
+$(document).on("click", ".js-editor-WorkflowStart-activator", function (e) {
+    if (!Granite.author || !Granite.author.ContentFrame) return;
+    var pagePath = Granite.author.ContentFrame.getContentPath();
+    if (!pagePath) return;
 
-        $.getJSON(pagePath + "/jcr:content.json").done(function (data) {
-            if (data["jcr:lockOwner"]) {
-                // Close any open dialogs
-                document.querySelectorAll("coral-dialog[open]")
-                    .forEach(function(d) { d.hide(); });
+    e.stopImmediatePropagation();
+    e.preventDefault();
 
-                // Show error instead
-                showLockAlert(data["jcr:lockOwner"]);
-            }
-            // If not locked - do nothing, dialog opens normally
-        });
-    }, 500);
+    $.getJSON(pagePath + "/jcr:content.json").done(function (data) {
+        if (data["jcr:lockOwner"]) {
+            showLockAlert(data["jcr:lockOwner"]);
+        } else {
+            // Temporarily remove handler, click, restore
+            $(document).off("click", ".js-editor-WorkflowStart-activator");
+            $(".js-editor-WorkflowStart-activator")[0].click();
+            setTimeout(function () {
+                attachPageEditorInterceptor();
+            }, 500);
+        }
+    }).fail(function () {
+        $(document).off("click", ".js-editor-WorkflowStart-activator");
+        $(".js-editor-WorkflowStart-activator")[0].click();
+        setTimeout(attachPageEditorInterceptor, 500);
+    });
 });
-// Check what element is clicked when you click "Start Workflow" 
-// in the Page Info menu
-$(document).on("click", function(e) {
-    console.log("clicked:", e.target.className, e.target.tagName);
-});
 
+function attachPageEditorInterceptor() {
+    $(document).on("click", ".js-editor-WorkflowStart-activator", pageEditorWorkflowCheck);
+}
 
+function pageEditorWorkflowCheck(e) {
+    if (!Granite.author || !Granite.author.ContentFrame) return;
+    var pagePath = Granite.author.ContentFrame.getContentPath();
+    if (!pagePath) return;
+
+    e.stopImmediatePropagation();
+    e.preventDefault();
+
+    $.getJSON(pagePath + "/jcr:content.json").done(function (data) {
+        if (data["jcr:lockOwner"]) {
+            showLockAlert(data["jcr:lockOwner"]);
+        } else {
+            $(document).off("click", ".js-editor-WorkflowStart-activator");
+            $(".js-editor-WorkflowStart-activator")[0].click();
+            setTimeout(attachPageEditorInterceptor, 500);
+        }
+    }).fail(function () {
+        $(document).off("click", ".js-editor-WorkflowStart-activator");
+        $(".js-editor-WorkflowStart-activator")[0].click();
+        setTimeout(attachPageEditorInterceptor, 500);
+    });
+}
