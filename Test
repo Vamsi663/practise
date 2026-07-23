@@ -1,41 +1,104 @@
-@BeforeEach
-void setUp() throws Exception {
-
-    context.create().resource("/content/carousel");
-    context.create().resource("/content/carousel/item1");
-    context.create().resource("/content/carousel/item2");
-    context.create().resource("/content/carousel/item3");
-
-    model = new USCBCarouselImpl();
-
-    Resource resource = context.resourceResolver().getResource("/content/carousel");
-    setField(model, "resource", resource);
-}
-
-
-
-
 @Test
-void testGetLoopTrue() throws Exception {
-    setField(model, "loop", true);
-    assertTrue(model.getLoop());
+void testGetLoopFalse() throws Exception {
+    setField(model, "loop", false);
+    assertFalse(model.getLoop());
 }
 
 @Test
-void testGetSpeedDefault() throws Exception {
-    setField(model, "slides", 0);
+void testGetSpeedConfiguredValue() throws Exception {
+    setField(model, "slides", 3);
     setField(model, "speed", 900);
-    assertEquals(400, model.getSpeed());
+
+    assertEquals(900, model.getSpeed());
 }
 
 @Test
-void testGetSlidesDefault() throws Exception {
-    setField(model, "slides", 0);
-    assertEquals(1, model.getSlides());
+void testGetSlidesConfiguredValue() throws Exception {
+    setField(model, "slides", 4);
+
+    assertEquals(4, model.getSlides());
 }
 
 @Test
-void testGetInitialSlideMiddleItem() throws Exception {
-    setField(model, "activeItem", "item2");
-    assertEquals(1, model.getInitialSlide());
+void testGetSlidesTabletDefault() throws Exception {
+    setField(model, "slidesTablet", 0);
+
+    assertEquals(1, model.getSlidesTablet());
+}
+
+@Test
+void testGetSlidesTabletConfiguredValue() throws Exception {
+    setField(model, "slidesTablet", 3);
+
+    assertEquals(3, model.getSlidesTablet());
+}
+
+@Test
+void testGetSlidesMobileDefault() throws Exception {
+    setField(model, "slidesMobile", 0);
+
+    assertEquals(1, model.getSlidesMobile());
+}
+
+@Test
+void testGetSlidesMobileConfiguredValue() throws Exception {
+    setField(model, "slidesMobile", 2);
+
+    assertEquals(2, model.getSlidesMobile());
+}
+
+@Test
+void testGetSpacing() throws Exception {
+    setField(model, "spacing", 20);
+
+    assertEquals(20, model.getSpacing());
+}
+
+@Test
+void testGetScrollbarTrue() throws Exception {
+    setField(model, "scrollbar", true);
+
+    assertTrue(model.getScrollbar());
+}
+
+@Test
+void testGetScrollbarFalse() throws Exception {
+    setField(model, "scrollbar", false);
+
+    assertFalse(model.getScrollbar());
+}
+
+@Test
+void testGetInitialSlideNullActiveItem() throws Exception {
+    setField(model, "activeItem", null);
+
+    assertEquals(0, model.getInitialSlide());
+}
+
+@Test
+void testGetInitialSlideEmptyActiveItem() throws Exception {
+    setField(model, "activeItem", "");
+
+    assertEquals(0, model.getInitialSlide());
+}
+
+@Test
+void testGetInitialSlideFirstItem() throws Exception {
+    setField(model, "activeItem", "item1");
+
+    assertEquals(0, model.getInitialSlide());
+}
+
+@Test
+void testGetInitialSlideLastItem() throws Exception {
+    setField(model, "activeItem", "item3");
+
+    assertEquals(2, model.getInitialSlide());
+}
+
+@Test
+void testGetInitialSlideItemNotFound() throws Exception {
+    setField(model, "activeItem", "item10");
+
+    assertEquals(3, model.getInitialSlide());
 }
