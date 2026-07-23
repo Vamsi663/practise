@@ -1,14 +1,8 @@
-@BeforeEach
-void setUp() {
-    context.addModelsForClasses(
-        USCBCarouselImpl.class,
-        com.adobe.cq.wcm.core.components.internal.models.v1.CarouselImpl.class
-    );
-
-    context.create().resource("/apps/" + RESOURCE_TYPE,
-            "sling:resourceSuperType", SUPER_TYPE);
-    context.create().resource("/apps/" + SUPER_TYPE);
-
-    context.create().page("/content/test-page");
-    context.currentPage("/content/test-page");
+ModelFactory modelFactory = context.getService(ModelFactory.class);
+Resource superTypeResource = context.resourceResolver().getResource("/apps/" + SUPER_TYPE);
+try {
+    Object result = modelFactory.createModel(superTypeResource, Carousel.class);
+    System.out.println("Created: " + result);
+} catch (Exception e) {
+    e.printStackTrace();
 }
