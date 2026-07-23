@@ -1,2 +1,183 @@
-System.out.println("Resource type: " + carouselResource.getResourceType());
-System.out.println("Resource super type: " + carouselResource.getResourceSuperType());
+package com.barclays.uscb.core.models.impl;
+
+import com.adobe.cq.wcm.core.components.internal.models.v1.CarouselImpl;
+import io.wcm.testing.mock.aem.junit5.AemContext;
+import io.wcm.testing.mock.aem.junit5.AemContextExtension;
+import org.apache.sling.api.resource.Resource;
+import org.apache.sling.testing.mock.sling.ResourceResolverType;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Unit tests for USCBCarouselImpl.
+ */
+@ExtendWith(AemContextExtension.class)
+class USCBCarouselImplTest {
+
+    private final AemContext context = new AemContext(ResourceResolverType.JCR_MOCK);
+
+    private Resource carouselResource;
+
+    // Using ABSOLUTE /apps paths directly as the resourceType value,
+    // so we don't depend on search-path resolution (which JCR_MOCK
+    // does not configure automatically for /apps and /libs).
+    private static final String RESOURCE_TYPE = "/apps/barclaysuscb/components/content/carousel";
+    private static final String SUPER_TYPE = "/apps/core/wcm/components/carousel/v2/carousel";
+
+    @BeforeEach
+    void setUp() {
+        context.addModelsForClasses(USCBCarouselImpl.class, CarouselImpl.class);
+
+        // Register component + supertype nodes so resourceSuperType resolves
+        context.create().resource(RESOURCE_TYPE,
+                "jcr:primaryType", "cq:Component",
+                "sling:resourceSuperType", SUPER_TYPE);
+
+        context.create().resource(SUPER_TYPE,
+                "jcr:primaryType", "cq:Component");
+
+        context.create().page("/content/test-page");
+        context.currentPage("/content/test-page");
+    }
+
+    /**
+     * Creates the carousel resource and wires it into the mocked request,
+     * since the core Carousel delegate requires adaptation from
+     * SlingHttpServletRequest, not a bare Resource.
+     */
+    private USCBCarouselImpl createCarouselModel(Map<String, Object> props) {
+        Map<String, Object> allProps = new HashMap<>(props);
+        allProps.put("sling:resourceType", RESOURCE_TYPE);
+
+        carouselResource = context.create().resource(
+                "/content/test-page/jcr:content/carousel", allProps);
+
+        context.currentResource(carouselResource);
+        context.request().setResource(carouselResource);
+
+        System.out.println("Resource type: " + carouselResource.getResourceType());
+        System.out.println("Resource super type: " + carouselResource.getResourceSuperType());
+
+        return context.request().adaptTo(USCBCarouselImpl.class);
+    }
+
+    private Map<String, Object> props() {
+        return new HashMap<>();
+    }
+
+    @Test
+    void testGetLoop_ReturnsTrue() {
+        Map<String, Object> props = props();
+        props.put("loop", true);
+        props.put("speed", 500);
+        props.put("slides", 3);
+        props.put("slidesTablet", 2);
+        props.put("slidesMobile", 1);
+        props.put("spacing", 10);
+
+        USCBCarouselImpl model = createCarouselModel(props);
+
+        assertNotNull(model);
+        assertTrue(model.getLoop());
+    }
+
+    @Test
+    void testGetLoop_ReturnsFalse() {
+        Map<String, Object> props = props();
+        props.put("loop", false);
+
+        USCBCarouselImpl model = createCarouselModel(props);
+
+        assertNotNull(model);
+        assertFalse(model.getLoop());
+    }
+
+    @Test
+    void testGetSpeed_WhenSlidesIsPositive() {
+        Map<String, Object> props = props();
+        props.put("slides", 3);
+        props.put("speed", 700);
+
+        USCBCarouselImpl model = createCarouselModel(props);
+
+        assertNotNull(model);
+        assertEquals(700, model.getSpeed());
+    }
+
+    @Test
+    void testGetSpeed_WhenSlidesIsZeroOrLess_ReturnsDefault400() {
+        Map<String, Object> props = props();
+        props.put("slides", 0);
+        props.put("speed", 700);
+
+        USCBCarouselImpl model = createCarouselModel(props);
+
+        assertNotNull(model);
+        assertEquals(400, model.getSpeed());
+    }
+
+    @Test
+    void testGetSlides_WhenZero_ReturnsDefault1() {
+        Map<String, Object> props = props();
+        props.put("slides", 0);
+
+        USCBCarouselImpl model = createCarouselModel(props);
+
+        assertNotNull(model);
+        assertEquals(1, model.getSlides());
+    }
+
+    @Test
+    void testGetSlidesTablet_WhenZeroOrLess_ReturnsDefault1() {
+        Map<String, Object> props = props();
+        props.put("slidesTablet", 0);
+
+        USCBCarouselImpl model = createCarouselModel(props);
+
+        assertNotNull(model);
+        assertEquals(1, model.getSlidesTablet());
+    }
+
+    @Test
+    void testGetSlidesMobile_WhenZeroOrLess_ReturnsDefault1() {
+        Map<String, Object> props = props();
+        props.put("slidesMobile", 0);
+
+        USCBCarouselImpl model = createCarouselModel(props);
+
+        assertNotNull(model);
+        assertEquals(1, model.getSlidesMobile());
+    }
+
+    @Test
+    void testGetInitialSlide_NoActiveItem_ReturnsZero() {
+        USCBCarouselImpl model = createCarouselModel(props());
+
+        assertNotNull(model);
+        assertEquals(0, model.getInitialSlide());
+    }
+
+    @Test
+    void testGetInitialSlide_WithActiveItem_ReturnsMatchingIndex() {
+        Map<String, Object> props = props();
+        props.put("activeItem", "item1");
+
+        USCBCarouselImpl model = createCarouselModel(props);
+
+        context.create().resource(carouselResource.getPath() + "/item0");
+        context.create().resource(carouselResource.getPath() + "/item1");
+        context.create().resource(carouselResource.getPath() + "/item2");
+
+        context.request().setResource(carouselResource);
+        model = context.request().adaptTo(USCBCarouselImpl.class);
+
+        assertNotNull(model);
+        assertEquals(1, model.getInitialSlide());
+    }
+}
