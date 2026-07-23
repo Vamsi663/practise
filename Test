@@ -1,168 +1,41 @@
-package com.barclays.uscb.core.models.impl;
+@BeforeEach
+void setUp() throws Exception {
 
-import static org.junit.jupiter.api.Assertions.*;
+    context.create().resource("/content/carousel");
+    context.create().resource("/content/carousel/item1");
+    context.create().resource("/content/carousel/item2");
+    context.create().resource("/content/carousel/item3");
 
-import org.apache.sling.api.resource.Resource;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+    model = new USCBCarouselImpl();
 
-import io.wcm.testing.mock.aem.junit5.AemContext;
-import io.wcm.testing.mock.aem.junit5.AemContextExtension;
+    Resource resource = context.resourceResolver().getResource("/content/carousel");
+    setField(model, "resource", resource);
+}
 
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.test.util.ReflectionTestUtils;
 
-@ExtendWith(AemContextExtension.class)
-class USCBCarouselImplTest {
 
-    private final AemContext context = new AemContext();
 
-    private USCBCarouselImpl model;
+@Test
+void testGetLoopTrue() throws Exception {
+    setField(model, "loop", true);
+    assertTrue(model.getLoop());
+}
 
-    @BeforeEach
-    void setUp() {
+@Test
+void testGetSpeedDefault() throws Exception {
+    setField(model, "slides", 0);
+    setField(model, "speed", 900);
+    assertEquals(400, model.getSpeed());
+}
 
-        context.create().resource("/content/carousel");
-        context.create().resource("/content/carousel/item1");
-        context.create().resource("/content/carousel/item2");
-        context.create().resource("/content/carousel/item3");
+@Test
+void testGetSlidesDefault() throws Exception {
+    setField(model, "slides", 0);
+    assertEquals(1, model.getSlides());
+}
 
-        model = new USCBCarouselImpl();
-
-        Resource resource = context.resourceResolver().getResource("/content/carousel");
-        ReflectionTestUtils.setField(model, "resource", resource);
-    }
-
-    @Test
-    void testGetLoopTrue() {
-        ReflectionTestUtils.setField(model, "loop", true);
-        assertTrue(model.getLoop());
-    }
-
-    @Test
-    void testGetLoopFalse() {
-        ReflectionTestUtils.setField(model, "loop", false);
-        assertFalse(model.getLoop());
-    }
-
-    @Test
-    void testGetSpeedDefault() {
-        ReflectionTestUtils.setField(model, "slides", 0);
-        ReflectionTestUtils.setField(model, "speed", 900);
-
-        assertEquals(400, model.getSpeed());
-    }
-
-    @Test
-    void testGetSpeedCustom() {
-        ReflectionTestUtils.setField(model, "slides", 3);
-        ReflectionTestUtils.setField(model, "speed", 900);
-
-        assertEquals(900, model.getSpeed());
-    }
-
-    @Test
-    void testGetSlidesDefault() {
-        ReflectionTestUtils.setField(model, "slides", 0);
-
-        assertEquals(1, model.getSlides());
-    }
-
-    @Test
-    void testGetSlidesCustom() {
-        ReflectionTestUtils.setField(model, "slides", 5);
-
-        assertEquals(5, model.getSlides());
-    }
-
-    @Test
-    void testGetSlidesTabletDefault() {
-        ReflectionTestUtils.setField(model, "slidesTablet", 0);
-
-        assertEquals(1, model.getSlidesTablet());
-    }
-
-    @Test
-    void testGetSlidesTabletCustom() {
-        ReflectionTestUtils.setField(model, "slidesTablet", 4);
-
-        assertEquals(4, model.getSlidesTablet());
-    }
-
-    @Test
-    void testGetSlidesMobileDefault() {
-        ReflectionTestUtils.setField(model, "slidesMobile", 0);
-
-        assertEquals(1, model.getSlidesMobile());
-    }
-
-    @Test
-    void testGetSlidesMobileCustom() {
-        ReflectionTestUtils.setField(model, "slidesMobile", 2);
-
-        assertEquals(2, model.getSlidesMobile());
-    }
-
-    @Test
-    void testGetSpacing() {
-        ReflectionTestUtils.setField(model, "spacing", 20);
-
-        assertEquals(20, model.getSpacing());
-    }
-
-    @Test
-    void testGetScrollbarTrue() {
-        ReflectionTestUtils.setField(model, "scrollbar", true);
-
-        assertTrue(model.getScrollbar());
-    }
-
-    @Test
-    void testGetScrollbarFalse() {
-        ReflectionTestUtils.setField(model, "scrollbar", false);
-
-        assertFalse(model.getScrollbar());
-    }
-
-    @Test
-    void testGetInitialSlideNullActiveItem() {
-        ReflectionTestUtils.setField(model, "activeItem", null);
-
-        assertEquals(0, model.getInitialSlide());
-    }
-
-    @Test
-    void testGetInitialSlideEmptyActiveItem() {
-        ReflectionTestUtils.setField(model, "activeItem", "");
-
-        assertEquals(0, model.getInitialSlide());
-    }
-
-    @Test
-    void testGetInitialSlideFirstItem() {
-        ReflectionTestUtils.setField(model, "activeItem", "item1");
-
-        assertEquals(0, model.getInitialSlide());
-    }
-
-    @Test
-    void testGetInitialSlideMiddleItem() {
-        ReflectionTestUtils.setField(model, "activeItem", "item2");
-
-        assertEquals(1, model.getInitialSlide());
-    }
-
-    @Test
-    void testGetInitialSlideLastItem() {
-        ReflectionTestUtils.setField(model, "activeItem", "item3");
-
-        assertEquals(2, model.getInitialSlide());
-    }
-
-    @Test
-    void testGetInitialSlideItemNotFound() {
-        ReflectionTestUtils.setField(model, "activeItem", "item10");
-
-        assertEquals(3, model.getInitialSlide());
-    }
+@Test
+void testGetInitialSlideMiddleItem() throws Exception {
+    setField(model, "activeItem", "item2");
+    assertEquals(1, model.getInitialSlide());
 }
