@@ -1,8 +1,2 @@
-org.apache.sling.models.factory.ModelFactory modelFactory =
-            context.getService(org.apache.sling.models.factory.ModelFactory.class);
-    try {
-        Object result = modelFactory.createModel(context.request(), USCBCarouselImpl.class);
-        System.out.println("Created: " + result);
-    } catch (Exception e) {
-        e.printStackTrace();
-    }
+System.out.println("Resource type: " + carouselResource.getResourceType());
+System.out.println("Resource super type: " + carouselResource.getResourceSuperType());
