@@ -1,28 +1,158 @@
-// PAGE EDITOR
-function pageEditorWorkflowCheck(e) {
-    if (!Granite.author || !Granite.author.ContentFrame) return;
-    var pagePath = Granite.author.ContentFrame.getContentPath();
-    if (!pagePath) return;
+package com.barclays.uscb.core.models.impl;
 
-    e.stopImmediatePropagation();
-    e.preventDefault();
+import com.adobe.cq.wcm.core.components.models.Carousel;
+import io.wcm.testing.mock.aem.junit5.AemContext;
+import io.wcm.testing.mock.aem.junit5.AemContextExtension;
+import org.apache.sling.api.resource.Resource;
+import org.apache.sling.testing.mock.sling.ResourceResolverType;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-    checkLock(pagePath,
-        function (owner) {
-            showLockAlert(owner);
-        },
-        function () {
-            // Temporarily detach, click, reattach
-            $(document).off("click", ".js-editor-WorkflowStart-activator",
-                pageEditorWorkflowCheck);
-            $(".js-editor-WorkflowStart-activator")[0].click();
-            setTimeout(function () {
-                $(document).on("click", ".js-editor-WorkflowStart-activator",
-                    pageEditorWorkflowCheck);
-            }, 1000);
-        }
-    );
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
+
+/**
+ * Unit tests for USCBCarouselImpl.
+ */
+@ExtendWith({AemContextExtension.class, MockitoExtension.class})
+class USCBCarouselImplTest {
+
+    private final AemContext context = new AemContext(ResourceResolverType.JCR_MOCK);
+
+    @Mock
+    private Carousel coreCarouselDelegate;
+
+    private Resource carouselResource;
+
+    private static final String RESOURCE_TYPE = "barclaysuscb/components/content/carousel";
+    private static final String SUPER_TYPE = "core/wcm/components/carousel/v2/carousel";
+
+    @BeforeEach
+    void setUp() {
+        context.addModelsForClasses(USCBCarouselImpl.class);
+
+        // Register component + supertype in /apps so ResourceSuperType resolution works
+        context.create().resource("/apps/" + RESOURCE_TYPE,
+                "sling:resourceSuperType", SUPER_TYPE);
+        context.create().resource("/apps/" + SUPER_TYPE);
+
+        context.create().page("/content/test-page");
+        context.currentPage("/content/test-page");
+    }
+
+    private Resource createCarouselResource(Map<String, Object> props) {
+        Map<String, Object> allProps = new HashMap<>(props);
+        allProps.put("sling:resourceType", RESOURCE_TYPE);
+        carouselResource = context.create().resource(
+                "/content/test-page/jcr:content/carousel", allProps);
+        context.currentResource(carouselResource);
+        return carouselResource;
+    }
+
+    @Test
+    void testGetLoop_ReturnsTrue() {
+        createCarouselResource(Map.of(
+                "loop", true,
+                "speed", 500,
+                "slides", 3,
+                "slidesTablet", 2,
+                "slidesMobile", 1,
+                "spacing", 10
+        ));
+
+        USCBCarouselImpl model = carouselResource.adaptTo(USCBCarouselImpl.class);
+
+        assertNotNull(model);
+        assertTrue(model.getLoop());
+    }
+
+    @Test
+    void testGetLoop_ReturnsFalse() {
+        createCarouselResource(Map.of("loop", false));
+
+        USCBCarouselImpl model = carouselResource.adaptTo(USCBCarouselImpl.class);
+
+        assertNotNull(model);
+        assertFalse(model.getLoop());
+    }
+
+    @Test
+    void testGetSpeed_WhenSlidesIsPositive() {
+        createCarouselResource(Map.of("slides", 3, "speed", 700));
+
+        USCBCarouselImpl model = carouselResource.adaptTo(USCBCarouselImpl.class);
+
+        assertNotNull(model);
+        assertEquals(700, model.getSpeed());
+    }
+
+    @Test
+    void testGetSpeed_WhenSlidesIsZeroOrLess_ReturnsDefault400() {
+        createCarouselResource(Map.of("slides", 0, "speed", 700));
+
+        USCBCarouselImpl model = carouselResource.adaptTo(USCBCarouselImpl.class);
+
+        assertNotNull(model);
+        assertEquals(400, model.getSpeed());
+    }
+
+    @Test
+    void testGetSlides_WhenZero_ReturnsDefault1() {
+        createCarouselResource(Map.of("slides", 0));
+
+        USCBCarouselImpl model = carouselResource.adaptTo(USCBCarouselImpl.class);
+
+        assertNotNull(model);
+        assertEquals(1, model.getSlides());
+    }
+
+    @Test
+    void testGetSlidesTablet_WhenZeroOrLess_ReturnsDefault1() {
+        createCarouselResource(Map.of("slidesTablet", 0));
+
+        USCBCarouselImpl model = carouselResource.adaptTo(USCBCarouselImpl.class);
+
+        assertNotNull(model);
+        assertEquals(1, model.getSlidesTablet());
+    }
+
+    @Test
+    void testGetSlidesMobile_WhenZeroOrLess_ReturnsDefault1() {
+        createCarouselResource(Map.of("slidesMobile", 0));
+
+        USCBCarouselImpl model = carouselResource.adaptTo(USCBCarouselImpl.class);
+
+        assertNotNull(model);
+        assertEquals(1, model.getSlidesMobile());
+    }
+
+    @Test
+    void testGetInitialSlide_NoActiveItem_ReturnsZero() {
+        createCarouselResource(Map.of());
+
+        USCBCarouselImpl model = carouselResource.adaptTo(USCBCarouselImpl.class);
+
+        assertNotNull(model);
+        assertEquals(0, model.getInitialSlide());
+    }
+
+    @Test
+    void testGetInitialSlide_WithActiveItem_ReturnsMatchingIndex() {
+        createCarouselResource(Map.of("activeItem", "item1"));
+
+        context.create().resource(carouselResource.getPath() + "/item0");
+        context.create().resource(carouselResource.getPath() + "/item1");
+        context.create().resource(carouselResource.getPath() + "/item2");
+
+        USCBCarouselImpl model = carouselResource.adaptTo(USCBCarouselImpl.class);
+
+        assertNotNull(model);
+        assertEquals(1, model.getInitialSlide());
+    }
 }
-
-$(document).on("click", ".js-editor-WorkflowStart-activator",
-    pageEditorWorkflowCheck);
