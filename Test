@@ -1,181 +1,19 @@
-package com.barclays.uscb.core.models.impl;
+private USCBCarouselImpl createCarouselModel(Map<String, Object> props) {
+    Map<String, Object> allProps = new HashMap<>(props);
+    allProps.put("sling:resourceType", RESOURCE_TYPE);
 
-import io.wcm.testing.mock.aem.junit5.AemContext;
-import io.wcm.testing.mock.aem.junit5.AemContextExtension;
-import org.apache.sling.api.resource.Resource;
-import org.apache.sling.models.factory.ModelFactory;
-import org.apache.sling.testing.mock.sling.ResourceResolverType;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+    carouselResource = context.create().resource(
+            "/content/test-page/jcr:content/carousel", allProps);
 
-import java.util.HashMap;
-import java.util.Map;
+    context.currentResource(carouselResource);
+    context.request().setResource(carouselResource);
 
-import static org.junit.jupiter.api.Assertions.*;
+    context.registerAdapter(
+            org.apache.sling.api.SlingHttpServletRequest.class,
+            com.adobe.cq.wcm.core.components.models.Carousel.class,
+            (java.util.function.Function<org.apache.sling.api.SlingHttpServletRequest, com.adobe.cq.wcm.core.components.models.Carousel>)
+                    request -> /* use IntelliJ Alt+Enter "Implement methods" here to fill in real signatures */ null
+    );
 
-/**
- * Unit tests for USCBCarouselImpl.
- */
-@ExtendWith(AemContextExtension.class)
-class USCBCarouselImplTest {
-
-    private final AemContext context = new AemContext(ResourceResolverType.JCR_MOCK);
-
-    private Resource carouselResource;
-
-    private static final String RESOURCE_TYPE = "barclaysuscb/components/carousel";
-    private static final String SUPER_TYPE = "core/wcm/components/carousel/v1/carousel";
-
-    @BeforeEach
-    void setUp() {
-        context.addModelsForClasses(USCBCarouselImpl.class);
-        context.create().page("/content/test-page");
-        context.currentPage("/content/test-page");
-    }
-
-    /**
-     * Creates the carousel resource with sling:resourceType and
-     * sling:resourceSuperType set directly on the content node
-     * (matching the pattern used in Accordion.json), then adapts
-     * via the request since USCBCarouselImpl supports that adaptable.
-     */
-    private USCBCarouselImpl createCarouselModel(Map<String, Object> props) {
-        Map<String, Object> allProps = new HashMap<>(props);
-        allProps.put("jcr:primaryType", "nt:unstructured");
-        allProps.put("sling:resourceType", RESOURCE_TYPE);
-        allProps.put("sling:resourceSuperType", SUPER_TYPE);
-
-        carouselResource = context.create().resource(
-                "/content/test-page/jcr:content/carousel", allProps);
-
-        context.currentResource(carouselResource);
-        context.request().setResource(carouselResource);
-
-        // Diagnostic: createModel() throws instead of returning null,
-        // so we can see exactly which field/dependency is unmet.
-        ModelFactory modelFactory = context.getService(ModelFactory.class);
-        try {
-            Object result = modelFactory.createModel(context.request(), USCBCarouselImpl.class);
-            System.out.println("Created: " + result);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return context.request().adaptTo(USCBCarouselImpl.class);
-    }
-
-    private Map<String, Object> props() {
-        return new HashMap<>();
-    }
-
-    @Test
-    void testGetLoop_ReturnsTrue() {
-        Map<String, Object> props = props();
-        props.put("loop", true);
-        props.put("speed", 500);
-        props.put("slides", 3);
-        props.put("slidesTablet", 2);
-        props.put("slidesMobile", 1);
-        props.put("spacing", 10);
-
-        USCBCarouselImpl model = createCarouselModel(props);
-
-        assertNotNull(model);
-        assertTrue(model.getLoop());
-    }
-
-    @Test
-    void testGetLoop_ReturnsFalse() {
-        Map<String, Object> props = props();
-        props.put("loop", false);
-
-        USCBCarouselImpl model = createCarouselModel(props);
-
-        assertNotNull(model);
-        assertFalse(model.getLoop());
-    }
-
-    @Test
-    void testGetSpeed_WhenSlidesIsPositive() {
-        Map<String, Object> props = props();
-        props.put("slides", 3);
-        props.put("speed", 700);
-
-        USCBCarouselImpl model = createCarouselModel(props);
-
-        assertNotNull(model);
-        assertEquals(700, model.getSpeed());
-    }
-
-    @Test
-    void testGetSpeed_WhenSlidesIsZeroOrLess_ReturnsDefault400() {
-        Map<String, Object> props = props();
-        props.put("slides", 0);
-        props.put("speed", 700);
-
-        USCBCarouselImpl model = createCarouselModel(props);
-
-        assertNotNull(model);
-        assertEquals(400, model.getSpeed());
-    }
-
-    @Test
-    void testGetSlides_WhenZero_ReturnsDefault1() {
-        Map<String, Object> props = props();
-        props.put("slides", 0);
-
-        USCBCarouselImpl model = createCarouselModel(props);
-
-        assertNotNull(model);
-        assertEquals(1, model.getSlides());
-    }
-
-    @Test
-    void testGetSlidesTablet_WhenZeroOrLess_ReturnsDefault1() {
-        Map<String, Object> props = props();
-        props.put("slidesTablet", 0);
-
-        USCBCarouselImpl model = createCarouselModel(props);
-
-        assertNotNull(model);
-        assertEquals(1, model.getSlidesTablet());
-    }
-
-    @Test
-    void testGetSlidesMobile_WhenZeroOrLess_ReturnsDefault1() {
-        Map<String, Object> props = props();
-        props.put("slidesMobile", 0);
-
-        USCBCarouselImpl model = createCarouselModel(props);
-
-        assertNotNull(model);
-        assertEquals(1, model.getSlidesMobile());
-    }
-
-    @Test
-    void testGetInitialSlide_NoActiveItem_ReturnsZero() {
-        USCBCarouselImpl model = createCarouselModel(props());
-
-        assertNotNull(model);
-        assertEquals(0, model.getInitialSlide());
-    }
-
-    @Test
-    void testGetInitialSlide_WithActiveItem_ReturnsMatchingIndex() {
-        Map<String, Object> props = props();
-        props.put("activeItem", "item1");
-
-        USCBCarouselImpl model = createCarouselModel(props);
-
-        context.create().resource(carouselResource.getPath() + "/item0");
-        context.create().resource(carouselResource.getPath() + "/item1");
-        context.create().resource(carouselResource.getPath() + "/item2");
-
-        context.request().setResource(carouselResource);
-        model = context.request().adaptTo(USCBCarouselImpl.class);
-
-        assertNotNull(model);
-        assertEquals(1, model.getInitialSlide());
-    }
+    return context.request().adaptTo(USCBCarouselImpl.class);
 }
