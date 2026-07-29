@@ -1,104 +1,277 @@
-@Test
-void testGetLoopFalse() throws Exception {
-    setField(model, "loop", false);
-    assertFalse(model.getLoop());
-}
+<?xml version="1.0" encoding="UTF-8"?>
+<jcr:root
+    xmlns:sling="http://sling.apache.org/jcr/sling/1.0"
+    xmlns:cq="http://www.day.com/jcr/cq/1.0"
+    xmlns:jcr="http://www.jcp.org/jcr/1.0"
+    xmlns:granite="http://www.adobe.com/jcr/granite/1.0"
 
-@Test
-void testGetSpeedConfiguredValue() throws Exception {
-    setField(model, "slides", 3);
-    setField(model, "speed", 900);
+    jcr:primaryType="nt:unstructured"
+    jcr:title="Extended Content Fragment List"
+    sling:resourceType="cq/gui/components/authoring/dialog"
 
-    assertEquals(900, model.getSpeed());
-}
+    extraClientlibs="[core.wcm.components.contentfragmentlist.v1.editor]"
+    helpPath="https://www.adobe.com/go/aem_cmp_cflist_v2"
+    trackingFeature="core-components:contentfragmentlist:v2">
 
-@Test
-void testGetSlidesConfiguredValue() throws Exception {
-    setField(model, "slides", 4);
+    <content
+        jcr:primaryType="nt:unstructured"
+        sling:resourceType="granite/ui/components/coral/foundation/container"
+        granite:class="cmp-contentfragmentlist__editor">
 
-    assertEquals(4, model.getSlides());
-}
+        <granite:data
+            jcr:primaryType="nt:unstructured"
+            component-path="${requestPathInfo.suffix}"/>
 
-@Test
-void testGetSlidesTabletDefault() throws Exception {
-    setField(model, "slidesTablet", 0);
+        <items jcr:primaryType="nt:unstructured">
 
-    assertEquals(1, model.getSlidesTablet());
-}
+            <tabs
+                jcr:primaryType="nt:unstructured"
+                sling:resourceType="granite/ui/components/coral/foundation/tabs"
+                maximized="{Boolean}true">
 
-@Test
-void testGetSlidesTabletConfiguredValue() throws Exception {
-    setField(model, "slidesTablet", 3);
+                <items jcr:primaryType="nt:unstructured">
 
-    assertEquals(3, model.getSlidesTablet());
-}
+                    <properties
+                        jcr:primaryType="nt:unstructured"
+                        jcr:title="Properties"
+                        sling:resourceType="granite/ui/components/coral/foundation/container"
+                        margin="{Boolean}true">
 
-@Test
-void testGetSlidesMobileDefault() throws Exception {
-    setField(model, "slidesMobile", 0);
+                        <items jcr:primaryType="nt:unstructured">
 
-    assertEquals(1, model.getSlidesMobile());
-}
+                            <column
+                                jcr:primaryType="nt:unstructured"
+                                sling:resourceType="granite/ui/components/coral/foundation/fixedcolumns"
+                                margin="{Boolean}true">
 
-@Test
-void testGetSlidesMobileConfiguredValue() throws Exception {
-    setField(model, "slidesMobile", 2);
+                                <items jcr:primaryType="nt:unstructured">
 
-    assertEquals(2, model.getSlidesMobile());
-}
+                                    <column
+                                        jcr:primaryType="nt:unstructured"
+                                        sling:resourceType="granite/ui/components/coral/foundation/container">
 
-@Test
-void testGetSpacing() throws Exception {
-    setField(model, "spacing", 20);
+                                        <items jcr:primaryType="nt:unstructured">
 
-    assertEquals(20, model.getSpacing());
-}
+                                            <!-- ================================================= -->
+                                            <!-- SELECTION MODE                                    -->
+                                            <!-- ================================================= -->
 
-@Test
-void testGetScrollbarTrue() throws Exception {
-    setField(model, "scrollbar", true);
+                                            <selectionMode
+                                                jcr:primaryType="nt:unstructured"
+                                                sling:resourceType="granite/ui/components/coral/foundation/form/select"
+                                                granite:class="cq-dialog-dropdown-showhide"
+                                                fieldLabel="Selection Mode"
+                                                fieldDescription="Select how the Content Fragment list should be populated."
+                                                name="./selectionMode">
 
-    assertTrue(model.getScrollbar());
-}
+                                                <granite:data
+                                                    jcr:primaryType="nt:unstructured"
+                                                    cq-dialog-dropdown-showhide-target=".content-fragment-selection-mode-target"/>
 
-@Test
-void testGetScrollbarFalse() throws Exception {
-    setField(model, "scrollbar", false);
+                                                <items jcr:primaryType="nt:unstructured">
 
-    assertFalse(model.getScrollbar());
-}
+                                                    <automatic
+                                                        jcr:primaryType="nt:unstructured"
+                                                        text="Automatic (Query Based)"
+                                                        value="automatic"
+                                                        selected="{Boolean}true"/>
 
-@Test
-void testGetInitialSlideNullActiveItem() throws Exception {
-    setField(model, "activeItem", null);
+                                                    <manual
+                                                        jcr:primaryType="nt:unstructured"
+                                                        text="Manual Selection"
+                                                        value="manual"/>
 
-    assertEquals(0, model.getInitialSlide());
-}
+                                                    <curated
+                                                        jcr:primaryType="nt:unstructured"
+                                                        text="Curated List"
+                                                        value="curated"/>
 
-@Test
-void testGetInitialSlideEmptyActiveItem() throws Exception {
-    setField(model, "activeItem", "");
+                                                </items>
+                                            </selectionMode>
 
-    assertEquals(0, model.getInitialSlide());
-}
+                                            <!-- ================================================= -->
+                                            <!-- AUTOMATIC MODE                                    -->
+                                            <!-- ================================================= -->
 
-@Test
-void testGetInitialSlideFirstItem() throws Exception {
-    setField(model, "activeItem", "item1");
+                                            <automaticFields
+                                                jcr:primaryType="nt:unstructured"
+                                                sling:resourceType="granite/ui/components/coral/foundation/container"
+                                                granite:class="hide content-fragment-selection-mode-target">
 
-    assertEquals(0, model.getInitialSlide());
-}
+                                                <granite:data
+                                                    jcr:primaryType="nt:unstructured"
+                                                    showhidetargetvalue="automatic"/>
 
-@Test
-void testGetInitialSlideLastItem() throws Exception {
-    setField(model, "activeItem", "item3");
+                                                <items jcr:primaryType="nt:unstructured">
 
-    assertEquals(2, model.getInitialSlide());
-}
+                                                    <modelPath
+                                                        jcr:primaryType="nt:unstructured"
+                                                        sling:resourceType="granite/ui/components/coral/foundation/form/select"
+                                                        emptyText="Select"
+                                                        fieldDescription="Content Fragment Model from which to build the list."
+                                                        fieldLabel="Model"
+                                                        name="./modelPath">
 
-@Test
-void testGetInitialSlideItemNotFound() throws Exception {
-    setField(model, "activeItem", "item10");
+                                                        <datasource
+                                                            jcr:primaryType="nt:unstructured"
+                                                            sling:resourceType="core/wcm/components/contentfragmentlist/v2/datasource/models"/>
+                                                    </modelPath>
 
-    assertEquals(3, model.getInitialSlide());
-}
+                                                    <parentPath
+                                                        jcr:primaryType="nt:unstructured"
+                                                        sling:resourceType="granite/ui/components/coral/foundation/form/pathfield"
+                                                        fieldDescription="Path under which the Content Fragments are located."
+                                                        fieldLabel="Parent Path"
+                                                        name="./parentPath"
+                                                        nodeTypes="[nt:folder,sling:Folder,sling:OrderedFolder]"
+                                                        rootPath="/content/dam"/>
+
+                                                    <tags
+                                                        jcr:primaryType="nt:unstructured"
+                                                        sling:resourceType="cq/gui/components/coral/common/form/tagfield"
+                                                        fieldDescription="Tags for filtering the list."
+                                                        fieldLabel="Tags"
+                                                        multiple="{Boolean}true"
+                                                        name="./tagNames"/>
+
+                                                    <orderBy
+                                                        jcr:primaryType="nt:unstructured"
+                                                        sling:resourceType="granite/ui/components/coral/foundation/form/select"
+                                                        fieldDescription="Select an element or property by which to order the list."
+                                                        fieldLabel="Order By"
+                                                        name="./orderBy">
+
+                                                        <datasource
+                                                            jcr:primaryType="nt:unstructured"
+                                                            sling:resourceType="core/wcm/components/contentfragmentlist/v2/datasource/orderby"
+                                                            componentPath="${requestPathInfo.suffix}"
+                                                            modelPath="${param.modelPath}"
+                                                            textOnly="{Boolean}true}"/>
+
+                                                        <granite:data
+                                                            jcr:primaryType="nt:unstructured"
+                                                            cmp-field-path="${requestPathInfo.resourcePath}"/>
+                                                    </orderBy>
+
+                                                    <sortOrder
+                                                        jcr:primaryType="nt:unstructured"
+                                                        sling:resourceType="granite/ui/components/coral/foundation/form/select"
+                                                        fieldDescription="Sort order, ascending or descending."
+                                                        fieldLabel="Sort Order"
+                                                        name="./sortOrder">
+
+                                                        <items jcr:primaryType="nt:unstructured">
+
+                                                            <asc
+                                                                jcr:primaryType="nt:unstructured"
+                                                                text="Ascending"
+                                                                value="asc"/>
+
+                                                            <desc
+                                                                jcr:primaryType="nt:unstructured"
+                                                                text="Descending"
+                                                                value="desc"/>
+
+                                                        </items>
+                                                    </sortOrder>
+
+                                                    <maxItems
+                                                        jcr:primaryType="nt:unstructured"
+                                                        sling:resourceType="granite/ui/components/coral/foundation/form/numberfield"
+                                                        fieldDescription="Maximum number of items displayed in the list. Leave empty to display all items."
+                                                        fieldLabel="Max Items"
+                                                        min="{Long}0"
+                                                        name="./maxItems"/>
+
+                                                </items>
+                                            </automaticFields>
+
+                                            <!-- ================================================= -->
+                                            <!-- MANUAL MODE                                       -->
+                                            <!-- ================================================= -->
+
+                                            <manualFields
+                                                jcr:primaryType="nt:unstructured"
+                                                sling:resourceType="granite/ui/components/coral/foundation/container"
+                                                granite:class="hide content-fragment-selection-mode-target">
+
+                                                <granite:data
+                                                    jcr:primaryType="nt:unstructured"
+                                                    showhidetargetvalue="manual"/>
+
+                                                <items jcr:primaryType="nt:unstructured">
+
+                                                    <manualFragmentPaths
+                                                        jcr:primaryType="nt:unstructured"
+                                                        sling:resourceType="granite/ui/components/coral/foundation/form/multifield"
+                                                        fieldLabel="Selected Content Fragments"
+                                                        fieldDescription="Select and reorder the Content Fragments to display">
+
+                                                        <field
+                                                            jcr:primaryType="nt:unstructured"
+                                                            sling:resourceType="granite/ui/components/coral/foundation/form/pathfield"
+                                                            name="./manualFragmentPaths"
+                                                            rootPath="/content/dam"
+                                                            emptyText="Select a Content Fragment"
+                                                            forceSelection="{Boolean}true"/>
+
+                                                    </manualFragmentPaths>
+
+                                                </items>
+                                            </manualFields>
+
+                                            <!-- ================================================= -->
+                                            <!-- CURATED LIST MODE                                 -->
+                                            <!-- ================================================= -->
+
+                                            <curatedFields
+                                                jcr:primaryType="nt:unstructured"
+                                                sling:resourceType="granite/ui/components/coral/foundation/container"
+                                                granite:class="hide content-fragment-selection-mode-target">
+
+                                                <granite:data
+                                                    jcr:primaryType="nt:unstructured"
+                                                    showhidetargetvalue="curated"/>
+
+                                                <items jcr:primaryType="nt:unstructured">
+
+                                                    <curatedListPath
+                                                        jcr:primaryType="nt:unstructured"
+                                                        sling:resourceType="granite/ui/components/coral/foundation/form/pathfield"
+                                                        fieldLabel="Curated List Content Fragment"
+                                                        fieldDescription="Select the Curated List Content Fragment containing the ordered Content Fragment references."
+                                                        name="./curatedListPath"
+                                                        rootPath="/content/dam"
+                                                        emptyText="Select a Curated List"
+                                                        forceSelection="{Boolean}true"/>
+
+                                                </items>
+                                            </curatedFields>
+
+                                            <!-- ================================================= -->
+                                            <!-- COMMON FIELD                                      -->
+                                            <!-- ================================================= -->
+
+                                            <id
+                                                jcr:primaryType="nt:unstructured"
+                                                sling:resourceType="granite/ui/components/coral/foundation/form/textfield"
+                                                fieldDescription="HTML ID attribute to apply to the component."
+                                                fieldLabel="ID"
+                                                name="./id"
+                                                validation="html-unique-id-validator"/>
+
+                                        </items>
+                                    </column>
+
+                                </items>
+                            </column>
+
+                        </items>
+                    </properties>
+
+                </items>
+            </tabs>
+
+        </items>
+    </content>
+</jcr:root>
