@@ -30,3 +30,42 @@
     </items>
 
 </selectionMode>
+
+
+@Model(
+    adaptables = SlingHttpServletRequest.class,
+    adapters = ContentFragmentList.class,
+    resourceType = ExtendedContentFragmentListImpl.RESOURCE_TYPE,
+    defaultInjectionStrategy = DefaultInjectionStrategy.OPTIONAL
+)
+public class ExtendedContentFragmentListImpl implements ContentFragmentList {
+
+    public static final String RESOURCE_TYPE =
+            "barclaysuscb/components/contentfragmentlistextended";
+
+    @Self
+    @Via(type = ResourceSuperType.class)
+    private ContentFragmentList delegate;
+
+    @ValueMapValue
+    private String selectionMode;
+
+    @ValueMapValue
+    private String[] manualFragmentPaths;
+
+    @ValueMapValue
+    private String curatedListPath;
+
+    @Override
+    public Collection<ContentFragmentListItem> getListItems() {
+        if ("manual".equals(selectionMode)) {
+            return getManualItems();
+        }
+
+        if ("curated".equals(selectionMode)) {
+            return getCuratedItems();
+        }
+
+        return delegate.getListItems();
+    }
+}
