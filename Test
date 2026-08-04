@@ -14,6 +14,10 @@ public class DAMContentElementWrapper implements DAMContentElement {
         this.contentElement = contentElement;
     }
 
+    private FragmentData getData() {
+        return contentElement.getValue();
+    }
+
     @Override
     public @NotNull String getName() {
         return contentElement.getName();
@@ -26,22 +30,43 @@ public class DAMContentElementWrapper implements DAMContentElement {
 
     @Override
     public @Nullable Object getValue() {
-        FragmentData data = contentElement.getValue();
+        FragmentData data = getData();
         return data != null ? data.getValue() : null;
     }
 
     @Override
-    public @Nullable String getDataType() {
-        FragmentData data = contentElement.getValue();
+    public @Nullable <T> T getValue(Class<T> type) {
+        FragmentData data = getData();
+        return data != null ? data.getValue(type) : null;
+    }
+
+    @Override
+    public @NotNull String getDataType() {
+        FragmentData data = getData();
 
         return data != null && data.getDataType() != null
                 ? data.getDataType().getTypeString()
-                : null;
+                : "";
+    }
+
+    @Override
+    public @NotNull String getExportedType() {
+        FragmentData data = getData();
+
+        if (data == null) {
+            return "";
+        }
+
+        String contentType = data.getContentType();
+
+        return contentType != null
+                ? contentType
+                : getDataType();
     }
 
     @Override
     public boolean isMultiValue() {
-        FragmentData data = contentElement.getValue();
+        FragmentData data = getData();
 
         return data != null
                 && data.getDataType() != null
@@ -50,10 +75,28 @@ public class DAMContentElementWrapper implements DAMContentElement {
 
     @Override
     public boolean isMultiLine() {
-        FragmentData data = contentElement.getValue();
+        FragmentData data = getData();
 
         return data != null
-                && data.getDataType() != null
-                && data.getDataType().isMultiLine();
+                && data.getContentType() != null
+                && data.getContentType().startsWith("text/")
+                && !isMultiValue();
+    }
+
+    @Override
+    public @Nullable String getHtml() {
+        FragmentData data = getData();
+
+        if (data == null || !isMultiLine()) {
+            return null;
+        }
+
+        String[] values = data.getValue(String[].class);
+
+        if (values != null) {
+            return String.join(", ", values);
+        }
+
+        return data.getValue(String.class);
     }
 }
