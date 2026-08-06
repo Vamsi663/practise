@@ -1,102 +1,52 @@
-package com.barclays.uscb.core.models;
+private Collection<DAMContentFragment> getCuratedItems() {
+    List<DAMContentFragment> items = new ArrayList<>();
 
-import com.adobe.cq.dam.cfm.ContentElement;
-import com.adobe.cq.dam.cfm.FragmentData;
-import com.adobe.cq.wcm.core.components.models.contentfragment.DAMContentFragment.DAMContentElement;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-public class DAMContentElementWrapper implements DAMContentElement {
-
-    private final ContentElement contentElement;
-
-    public DAMContentElementWrapper(ContentElement contentElement) {
-        this.contentElement = contentElement;
+    if (curatedListPath == null || curatedListPath.trim().isEmpty()) {
+        return items;
     }
 
-    private FragmentData getData() {
-        return contentElement.getValue();
+    Resource curatedResource =
+            resourceResolver.getResource(curatedListPath);
+
+    if (curatedResource == null) {
+        return items;
     }
 
-    @Override
-    public @NotNull String getName() {
-        return contentElement.getName();
+    ContentFragment curatedFragment =
+            curatedResource.adaptTo(ContentFragment.class);
+
+    if (curatedFragment == null) {
+        return items;
     }
 
-    @Override
-    public @Nullable String getTitle() {
-        return contentElement.getTitle();
+    ContentElement references =
+            curatedFragment.getElement("selectedContentFragments");
+
+    if (references == null || references.getValue() == null) {
+        return items;
     }
 
-    @Override
-    public @Nullable Object getValue() {
-        FragmentData data = getData();
-        return data != null ? data.getValue() : null;
+    String[] paths =
+            references.getValue().getValue(String[].class);
+
+    if (paths == null) {
+        return items;
     }
 
-    @Override
-    public @Nullable <T> T getValue(Class<T> type) {
-        FragmentData data = getData();
-        return data != null ? data.getValue(type) : null;
-    }
+    for (String path : paths) {
+        Resource resource = resourceResolver.getResource(path);
 
-    @Override
-    public @NotNull String getDataType() {
-        FragmentData data = getData();
-
-        return data != null && data.getDataType() != null
-                ? data.getDataType().getTypeString()
-                : "";
-    }
-
-    @Override
-    public @NotNull String getExportedType() {
-        FragmentData data = getData();
-
-        if (data == null) {
-            return "";
+        if (resource == null) {
+            continue;
         }
 
-        String contentType = data.getContentType();
+        ContentFragment fragment =
+                resource.adaptTo(ContentFragment.class);
 
-        return contentType != null
-                ? contentType
-                : getDataType();
-    }
-
-    @Override
-    public boolean isMultiValue() {
-        FragmentData data = getData();
-
-        return data != null
-                && data.getDataType() != null
-                && data.getDataType().isMultiValue();
-    }
-
-    @Override
-    public boolean isMultiLine() {
-        FragmentData data = getData();
-
-        return data != null
-                && data.getContentType() != null
-                && data.getContentType().startsWith("text/")
-                && !isMultiValue();
-    }
-
-    @Override
-    public @Nullable String getHtml() {
-        FragmentData data = getData();
-
-        if (data == null || !isMultiLine()) {
-            return null;
+        if (fragment != null) {
+            items.add(new DAMContentFragmentWrapper(fragment));
         }
-
-        String[] values = data.getValue(String[].class);
-
-        if (values != null) {
-            return String.join(", ", values);
-        }
-
-        return data.getValue(String.class);
     }
+
+    return items;
 }
