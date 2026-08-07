@@ -2,12 +2,15 @@
     "use strict";
 
     function updateFields(dialog) {
+        var mode;
 
-        var mode = dialog
-            .find("input[name='./selectionMode']:checked")
-            .val();
+        dialog.find("coral-radio[name='./selectionMode']").each(function () {
+            if (this.checked) {
+                mode = this.value;
+            }
+        });
 
-        // Default for existing components where selectionMode isn't stored yet
+        // Existing components without selectionMode
         if (!mode) {
             mode = "automatic";
         }
@@ -26,6 +29,10 @@
     $(document).on("foundation-contentloaded", function (e) {
         var dialog = $(e.target).closest("coral-dialog");
 
+        if (!dialog.length && $(e.target).is("coral-dialog")) {
+            dialog = $(e.target);
+        }
+
         if (dialog.length) {
             updateFields(dialog);
         }
@@ -33,7 +40,7 @@
 
     $(document).on(
         "change",
-        "input[name='./selectionMode']",
+        "coral-radio[name='./selectionMode']",
         function () {
             updateFields($(this).closest("coral-dialog"));
         }
