@@ -1,52 +1,42 @@
-private Collection<DAMContentFragment> getCuratedItems() {
-    List<DAMContentFragment> items = new ArrayList<>();
+(function ($, document) {
+    "use strict";
 
-    if (curatedListPath == null || curatedListPath.trim().isEmpty()) {
-        return items;
-    }
+    function updateFields(dialog) {
 
-    Resource curatedResource =
-            resourceResolver.getResource(curatedListPath);
+        var mode = dialog
+            .find("input[name='./selectionMode']:checked")
+            .val();
 
-    if (curatedResource == null) {
-        return items;
-    }
-
-    ContentFragment curatedFragment =
-            curatedResource.adaptTo(ContentFragment.class);
-
-    if (curatedFragment == null) {
-        return items;
-    }
-
-    ContentElement references =
-            curatedFragment.getElement("selectedContentFragments");
-
-    if (references == null || references.getValue() == null) {
-        return items;
-    }
-
-    String[] paths =
-            references.getValue().getValue(String[].class);
-
-    if (paths == null) {
-        return items;
-    }
-
-    for (String path : paths) {
-        Resource resource = resourceResolver.getResource(path);
-
-        if (resource == null) {
-            continue;
+        // Default for existing components where selectionMode isn't stored yet
+        if (!mode) {
+            mode = "automatic";
         }
 
-        ContentFragment fragment =
-                resource.adaptTo(ContentFragment.class);
+        dialog.find(".cf-mode-fields").hide();
 
-        if (fragment != null) {
-            items.add(new DAMContentFragmentWrapper(fragment));
+        if (mode === "automatic") {
+            dialog.find(".cf-automatic-fields").show();
+        } else if (mode === "manual") {
+            dialog.find(".cf-manual-fields").show();
+        } else if (mode === "curated") {
+            dialog.find(".cf-curated-fields").show();
         }
     }
 
-    return items;
-}
+    $(document).on("foundation-contentloaded", function (e) {
+        var dialog = $(e.target).closest("coral-dialog");
+
+        if (dialog.length) {
+            updateFields(dialog);
+        }
+    });
+
+    $(document).on(
+        "change",
+        "input[name='./selectionMode']",
+        function () {
+            updateFields($(this).closest("coral-dialog"));
+        }
+    );
+
+})(Granite.$, document);
