@@ -1,49 +1,47 @@
-(function ($, document) {
-    "use strict";
+package com.barclays.bcuspublic.core.models;
 
-    function updateFields(dialog) {
-        var mode;
+import com.day.cq.replication.Agent;
+import com.day.cq.replication.AgentManager;
+import org.apache.sling.api.resource.Resource;
+import org.apache.sling.models.annotations.DefaultInjectionStrategy;
+import org.apache.sling.models.annotations.Model;
+import org.apache.sling.models.annotations.injectorspecific.OSGiService;
+import org.apache.sling.models.annotations.injectorspecific.ValueMapValue;
 
-        dialog.find("coral-radio[name='./selectionMode']").each(function () {
-            if (this.checked) {
-                mode = this.value;
-            }
-        });
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
-        // Existing components without selectionMode
-        if (!mode) {
-            mode = "automatic";
+@Model(
+        adaptables = Resource.class,
+        defaultInjectionStrategy = DefaultInjectionStrategy.OPTIONAL
+)
+public class DispatcherAgentModel {
+
+    @ValueMapValue
+    private String dispatcherType;
+
+    @OSGiService
+    private AgentManager agentManager;
+
+    public List<Agent> getAgents() {
+
+        if (dispatcherType == null || agentManager == null) {
+            return Collections.emptyList();
         }
 
-        dialog.find(".cf-mode-fields").hide();
+        String prefix = dispatcherType.toLowerCase(Locale.ROOT);
 
-        if (mode === "automatic") {
-            dialog.find(".cf-automatic-fields").show();
-        } else if (mode === "manual") {
-            dialog.find(".cf-manual-fields").show();
-        } else if (mode === "curated") {
-            dialog.find(".cf-curated-fields").show();
-        }
+        return agentManager.getAgents()
+                .values()
+                .stream()
+                .filter(Agent::isEnabled)
+                .filter(agent -> agent.getId() != null)
+                .filter(agent ->
+                        agent.getId()
+                                .toLowerCase(Locale.ROOT)
+                                .startsWith(prefix))
+                .collect(Collectors.toList());
     }
-
-    $(document).on("foundation-contentloaded", function (e) {
-        var dialog = $(e.target).closest("coral-dialog");
-
-        if (!dialog.length && $(e.target).is("coral-dialog")) {
-            dialog = $(e.target);
-        }
-
-        if (dialog.length) {
-            updateFields(dialog);
-        }
-    });
-
-    $(document).on(
-        "change",
-        "coral-radio[name='./selectionMode']",
-        function () {
-            updateFields($(this).closest("coral-dialog"));
-        }
-    );
-
-})(Granite.$, document);
+}
