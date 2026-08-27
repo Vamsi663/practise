@@ -1,47 +1,29 @@
-package com.barclays.bcuspublic.core.models;
+private AgentFilter getAgentFilter(String pageName) {
 
-import com.day.cq.replication.Agent;
-import com.day.cq.replication.AgentManager;
-import org.apache.sling.api.resource.Resource;
-import org.apache.sling.models.annotations.DefaultInjectionStrategy;
-import org.apache.sling.models.annotations.Model;
-import org.apache.sling.models.annotations.injectorspecific.OSGiService;
-import org.apache.sling.models.annotations.injectorspecific.ValueMapValue;
+        if (AUTHOR_PAGE.equals(pageName)) {
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.stream.Collectors;
+            return agent ->
 
-@Model(
-        adaptables = Resource.class,
-        defaultInjectionStrategy = DefaultInjectionStrategy.OPTIONAL
-)
-public class DispatcherAgentModel {
+                    agent != null
 
-    @ValueMapValue
-    private String dispatcherType;
+                    && agent.getId() != null
 
-    @OSGiService
-    private AgentManager agentManager;
+                    && agent.getId().startsWith("author");
 
-    public List<Agent> getAgents() {
-
-        if (dispatcherType == null || agentManager == null) {
-            return Collections.emptyList();
         }
 
-        String prefix = dispatcherType.toLowerCase(Locale.ROOT);
+        if (PUBLISHER_PAGE.equals(pageName)) {
 
-        return agentManager.getAgents()
-                .values()
-                .stream()
-                .filter(Agent::isEnabled)
-                .filter(agent -> agent.getId() != null)
-                .filter(agent ->
-                        agent.getId()
-                                .toLowerCase(Locale.ROOT)
-                                .startsWith(prefix))
-                .collect(Collectors.toList());
-    }
-}
+            return agent ->
+
+                    agent != null
+
+                    && agent.getId() != null
+
+                    && agent.getId().startsWith("publisher");
+
+        }
+
+        return null;
+
+    
