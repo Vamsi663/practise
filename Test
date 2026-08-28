@@ -1,29 +1,66 @@
-private AgentFilter getAgentFilter(String pageName) {
+@Model(
+        adaptables = SlingHttpServletRequest.class,
+        defaultInjectionStrategy = DefaultInjectionStrategy.OPTIONAL
+)
+public class CustomDispatcherAgentModel {
 
-        if (AUTHOR_PAGE.equals(pageName)) {
+    private static final String AUTHOR_CACHE_CLEAR_PAGE = "author-cache-clear";
+    private static final String PUBLISH_CACHE_CLEAR_PAGE = "publish-cache-clear";
 
-            return agent ->
+    private static final String AUTHOR = "author-dispatcher-flush";
+    private static final String PUBLISH = "publish-dispatcher-flush";
 
-                    agent != null
+    @Self
+    private SlingHttpServletRequest request;
 
-                    && agent.getId() != null
+    @OSGiService
+    private DispatcherFlusher dispatcherFlusher;
 
-                    && agent.getId().startsWith("author");
+    public Collection<Agent> getAgents() {
 
+        PageManager pageManager =
+                request.getResourceResolver().adaptTo(PageManager.class);
+
+        if (pageManager == null) {
+            return Collections.emptyList();
         }
 
-        if (PUBLISHER_PAGE.equals(pageName)) {
+        Page page =
+                pageManager.getContainingPage(request.getResource());
 
+        if (page == null) {
+            return Collections.emptyList();
+        }
+
+        AgentFilter agentFilter = getAgentFilter(page.getName());
+
+        if (agentFilter == null) {
+            return Collections.emptyList();
+        }
+
+        return Arrays.asList(
+                dispatcherFlusher.getAgents(agentFilter)
+        );
+    }
+
+    private AgentFilter getAgentFilter(String pageName) {
+
+        if (AUTHOR_CACHE_CLEAR_PAGE.equals(pageName)) {
             return agent ->
-
                     agent != null
-
+                    && DispatcherFlushFilter.HIERARCHICAL.isIncluded(agent)
                     && agent.getId() != null
+                    && agent.getId().startsWith(AUTHOR);
+        }
 
-                    && agent.getId().startsWith("publisher");
-
+        if (PUBLISH_CACHE_CLEAR_PAGE.equals(pageName)) {
+            return agent ->
+                    agent != null
+                    && DispatcherFlushFilter.HIERARCHICAL.isIncluded(agent)
+                    && agent.getId() != null
+                    && agent.getId().startsWith(PUBLISH);
         }
 
         return null;
-
-    
+    }
+}
