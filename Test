@@ -1,12 +1,27 @@
-private void mockValidDispatcherAgent(String id) {
-    when(agent.getId()).thenReturn(id);
-    when(agent.getConfiguration()).thenReturn(agentConfig);
-    when(agentConfig.getSerializationType()).thenReturn("flush");
-    when(agentConfig.getTransportURI()).thenReturn("http://localhost:8080/dispatcher/invalidate.cache");
-    when(agentConfig.getProperties()).thenReturn(properties);
-    when(properties.get(
-            eq(AgentConfig.PROTOCOL_HTTP_HEADERS),
-            any(String[].class)))
-            .thenReturn(new String[]{"CQ-Action: {action}"});
-    when(agent.isEnabled()).thenReturn(true);
-}
+$(window).adaptTo("foundation-registry").register(
+    "foundation.validation.validator", {
+        selector: "[data-foundation-validation~='bcus.contentfragment']",
+
+        validate: function (el) {
+            var path = el.value;
+
+            if (!path) {
+                return;
+            }
+
+            var valid = false;
+
+            $.ajax({
+                url: path + "/jcr:content/data.json",
+                async: false,
+                success: function (data) {
+                    valid = !!data["cq:model"];
+                }
+            });
+
+            if (!valid) {
+                return "Please select a valid Content Fragment.";
+            }
+        }
+    }
+);
