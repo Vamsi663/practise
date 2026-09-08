@@ -6,8 +6,6 @@ registry.register("foundation.validation.validator", {
     validate: function (el) {
         var path = el.value;
 
-        console.log("CURATED VALIDATOR CALLED:", path);
-
         if (!path) {
             return;
         }
@@ -21,12 +19,10 @@ registry.register("foundation.validation.validator", {
             async: false,
 
             success: function (data) {
-                console.log("CF DATA:", data);
-                valid = data && !!data["cq:model"];
+                valid = !!(data && data["cq:model"]);
             },
 
             error: function () {
-                console.log("Not a Content Fragment:", path);
                 valid = false;
             }
         });
