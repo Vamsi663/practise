@@ -1,12 +1,12 @@
 var registry = $(window).adaptTo("foundation-registry");
 
 registry.register("foundation.validation.validator", {
-    selector: "[data-foundation-validation~='barclaysuscb.extendedcontentfragmentlist']",
+    selector: "foundation-autocomplete[name='./curatedListPath']",
 
     validate: function (el) {
         var path = el.value;
 
-        console.log("CF validation called:", path);
+        console.log("CURATED VALIDATOR CALLED:", path);
 
         if (!path) {
             return;
@@ -21,10 +21,12 @@ registry.register("foundation.validation.validator", {
             async: false,
 
             success: function (data) {
-                valid = !!(data && data["cq:model"]);
+                console.log("CF DATA:", data);
+                valid = data && !!data["cq:model"];
             },
 
             error: function () {
+                console.log("Not a Content Fragment:", path);
                 valid = false;
             }
         });
