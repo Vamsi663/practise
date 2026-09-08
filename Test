@@ -1,39 +1,36 @@
-(function ($, document, window) {
-    "use strict";
+var registry = $(window).adaptTo("foundation-registry");
 
-    var registry = $(window).adaptTo("foundation-registry");
+registry.register("foundation.validation.validator", {
+    selector: "[data-foundation-validation~='barclaysuscb.extendedcontentfragmentlist']",
 
-    registry.register("foundation.validation.validator", {
-        selector: "[validation='barclaysuscb.extendedcontentfragmentlist']",
+    validate: function (el) {
+        var path = el.value;
 
-        validate: function (el) {
-            var path = el.value;
+        console.log("CF validation called:", path);
 
-            if (!path) {
-                return;
-            }
-
-            var valid = false;
-
-            $.ajax({
-                url: path + "/jcr:content/data.json",
-                type: "GET",
-                dataType: "json",
-                async: false,
-
-                success: function (data) {
-                    valid = !!(data && data["cq:model"]);
-                },
-
-                error: function () {
-                    valid = false;
-                }
-            });
-
-            if (!valid) {
-                return "Please select a valid Content Fragment.";
-            }
+        if (!path) {
+            return;
         }
-    });
 
-})(Granite.$, document, window);
+        var valid = false;
+
+        $.ajax({
+            url: path + "/jcr:content/data.json",
+            type: "GET",
+            dataType: "json",
+            async: false,
+
+            success: function (data) {
+                valid = !!(data && data["cq:model"]);
+            },
+
+            error: function () {
+                valid = false;
+            }
+        });
+
+        if (!valid) {
+            return "Please select a valid Content Fragment.";
+        }
+    }
+});
