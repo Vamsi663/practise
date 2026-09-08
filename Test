@@ -1,27 +1,8 @@
-$(window).adaptTo("foundation-registry").register(
-    "foundation.validation.validator", {
-        selector: "[data-foundation-validation~='bcus.contentfragment']",
-
-        validate: function (el) {
-            var path = el.value;
-
-            if (!path) {
-                return;
-            }
-
-            var valid = false;
-
-            $.ajax({
-                url: path + "/jcr:content/data.json",
-                async: false,
-                success: function (data) {
-                    valid = !!data["cq:model"];
-                }
-            });
-
-            if (!valid) {
-                return "Please select a valid Content Fragment.";
-            }
-        }
-    }
+var el = document.querySelector(
+    "[data-foundation-validation~='barclaysuscb.extendedcontentfragmentlist']"
 );
+
+var validation = Granite.$(el).adaptTo("foundation-validation");
+
+validation.checkValidity();
+validation.updateUI();
