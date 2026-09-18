@@ -1,25 +1,21 @@
+var activeModelPath = getActiveModelPath(dialog);
+var coreModelField = dialog.find("[name='./modelPath']");
+
+console.log("SELECTION MODE:", this.value);
+console.log("ACTIVE MODEL PATH:", activeModelPath);
+console.log("CORE MODEL BEFORE:", coreModelField.val());
+
+if (activeModelPath && coreModelField.length) {
+    coreModelField.val(activeModelPath);
+}
+
+console.log("CORE MODEL AFTER:", coreModelField.val());
+
+
 $(document).on(
     "change",
     "coral-radio[name='./selectionMode']",
     function () {
-        var dialog = $(this).closest("coral-dialog");
-
-        updateFields(dialog);
-
-        var activeModelPath = getActiveModelPath(dialog);
-        var coreModelField = dialog.find("[name='./modelPath']");
-
-        console.log("SELECTION MODE:", this.value);
-        console.log("ACTIVE MODEL PATH:", activeModelPath);
-        console.log("CORE MODEL BEFORE:", coreModelField.val());
-
-        if (activeModelPath && coreModelField.length) {
-            coreModelField.val(activeModelPath);
-            coreModelField[0].dispatchEvent(
-                new Event("change", { bubbles: true })
-            );
-        }
-
-        console.log("CORE MODEL AFTER:", coreModelField.val());
+        updateFields($(this).closest("coral-dialog"));
     }
 );
