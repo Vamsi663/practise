@@ -1,17 +1,9 @@
-function syncModelPath(dialog, mode) {
-    var automaticModel = dialog.find("[name='./modelPath']");
-    var selectedModel;
+var automaticModel = dialog.find("[name='./modelPath']");
+var manualModel = dialog.find("[name='./manualModelPath']");
+var curatedModel = dialog.find("[name='./curatedModelPath']");
 
-    if (mode === "manual") {
-        selectedModel = dialog.find("[name='./manualModelPath']").val();
-    } else if (mode === "curated") {
-        selectedModel = dialog.find("[name='./curatedModelPath']").val();
-    } else {
-        return;
-    }
-
-    if (selectedModel && automaticModel.val() !== selectedModel) {
-        automaticModel.val(selectedModel);
-        automaticModel.trigger("foundation-field-change");
-    }
+if (mode === "manual" && manualModel.val()) {
+    automaticModel.val(manualModel.val()).trigger("foundation-field-change");
+} else if (mode === "curated" && curatedModel.val()) {
+    automaticModel.val(curatedModel.val()).trigger("foundation-field-change");
 }
