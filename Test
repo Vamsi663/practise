@@ -1,9 +1,165 @@
-var automaticModel = dialog.find("[name='./modelPath']");
-var manualModel = dialog.find("[name='./manualModelPath']");
-var curatedModel = dialog.find("[name='./curatedModelPath']");
+(function ($, document) {
+    "use strict";
 
-if (mode === "manual" && manualModel.val()) {
-    automaticModel.val(manualModel.val()).trigger("foundation-field-change");
-} else if (mode === "curated" && curatedModel.val()) {
-    automaticModel.val(curatedModel.val()).trigger("foundation-field-change");
-}
+    /*
+     * Returns the model path for the currently selected mode.
+     */
+    function getActiveModelPath(dialog) {
+        var mode;
+
+        dialog.find("coral-radio[name='./selectionMode']").each(function () {
+            if (this.checked) {
+                mode = this.value;
+            }
+        });
+
+        if (mode === "manual") {
+            return dialog.find("[name='./manualModelPath']").val();
+        }
+
+        if (mode === "curated") {
+            return dialog.find("[name='./curatedModelPath']").val();
+        }
+
+        return dialog.find("[name='./modelPath']").val();
+    }
+
+
+    /*
+     * Show fields based on selected mode.
+     */
+    function updateFields(dialog) {
+        var mode;
+
+        dialog.find("coral-radio[name='./selectionMode']").each(function () {
+            if (this.checked) {
+                mode = this.value;
+            }
+        });
+
+        // Existing components without selectionMode
+        if (!mode) {
+            mode = "automatic";
+        }
+
+        dialog.find(".cf-mode-fields").hide();
+
+        if (mode === "automatic") {
+            dialog.find(".cf-automatic-fields").show();
+
+        } else if (mode === "manual") {
+            dialog.find(".cf-manual-fields").show();
+
+        } else if (mode === "curated") {
+            dialog.find(".cf-curated-fields").show();
+        }
+    }
+
+
+    /*
+     * Dialog loaded.
+     */
+    $(document).on("foundation-contentloaded", function (e) {
+        var dialog = $(e.target).closest("coral-dialog");
+
+        if (!dialog.length && $(e.target).is("coral-dialog")) {
+            dialog = $(e.target);
+        }
+
+        if (dialog.length) {
+            updateFields(dialog);
+
+            console.log(
+                "INITIAL ACTIVE MODEL PATH:",
+                getActiveModelPath(dialog)
+            );
+        }
+    });
+
+
+    /*
+     * Selection mode changed:
+     * Automatic / Manual / Curated
+     */
+    $(document).on(
+        "change",
+        "coral-radio[name='./selectionMode']",
+        function () {
+
+            var dialog = $(this).closest("coral-dialog");
+
+            updateFields(dialog);
+
+            console.log("SELECTION MODE:", this.value);
+            console.log(
+                "ACTIVE MODEL PATH:",
+                getActiveModelPath(dialog)
+            );
+        }
+    );
+
+
+    /*
+     * Model changed.
+     */
+    $(document).on(
+        "change",
+        "[name='./modelPath'], " +
+        "[name='./manualModelPath'], " +
+        "[name='./curatedModelPath']",
+        function () {
+
+            var dialog = $(this).closest("coral-dialog");
+
+            console.log("MODEL FIELD:", this.name);
+            console.log("MODEL VALUE:", this.value);
+            console.log(
+                "ACTIVE MODEL PATH:",
+                getActiveModelPath(dialog)
+            );
+        }
+    );
+
+
+    /*
+     * Curated List Content Fragment validation.
+     */
+    var registry = $(window).adaptTo("foundation-registry");
+
+    registry.register("foundation.validation.validator", {
+
+        selector:
+            "foundation-autocomplete[name='./curatedListPath']",
+
+        validate: function (el) {
+
+            var path = el.value;
+
+            if (!path) {
+                return;
+            }
+
+            var valid = false;
+
+            $.ajax({
+                url: path + "/jcr:content/data.json",
+                type: "GET",
+                dataType: "json",
+                async: false,
+
+                success: function (data) {
+                    valid = !!(data && data["cq:model"]);
+                },
+
+                error: function () {
+                    valid = false;
+                }
+            });
+
+            if (!valid) {
+                return "Please select a valid Content Fragment.";
+            }
+        }
+    });
+
+})(Granite.$, document);
