@@ -1,34 +1,17 @@
-var registry = $(window).adaptTo("foundation-registry");
+function syncModelPath(dialog, mode) {
+    var automaticModel = dialog.find("[name='./modelPath']");
+    var selectedModel;
 
-registry.register("foundation.validation.validator", {
-    selector: "foundation-autocomplete[name='./curatedListPath']",
-
-    validate: function (el) {
-        var path = el.value;
-
-        if (!path) {
-            return;
-        }
-
-        var valid = false;
-
-        $.ajax({
-            url: path + "/jcr:content/data.json",
-            type: "GET",
-            dataType: "json",
-            async: false,
-
-            success: function (data) {
-                valid = !!(data && data["cq:model"]);
-            },
-
-            error: function () {
-                valid = false;
-            }
-        });
-
-        if (!valid) {
-            return "Please select a valid Content Fragment.";
-        }
+    if (mode === "manual") {
+        selectedModel = dialog.find("[name='./manualModelPath']").val();
+    } else if (mode === "curated") {
+        selectedModel = dialog.find("[name='./curatedModelPath']").val();
+    } else {
+        return;
     }
-});
+
+    if (selectedModel && automaticModel.val() !== selectedModel) {
+        automaticModel.val(selectedModel);
+        automaticModel.trigger("foundation-field-change");
+    }
+}
