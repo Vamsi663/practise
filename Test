@@ -12,6 +12,14 @@ $(document).on(
         console.log("SELECTION MODE:", this.value);
         console.log("ACTIVE MODEL PATH:", activeModelPath);
         console.log("CORE MODEL BEFORE:", coreModelField.val());
-        console.log("ACTIVE MODEL:", activeModelPath);
+
+        if (activeModelPath && coreModelField.length) {
+            coreModelField.val(activeModelPath);
+            coreModelField[0].dispatchEvent(
+                new Event("change", { bubbles: true })
+            );
+        }
+
+        console.log("CORE MODEL AFTER:", coreModelField.val());
     }
 );
