@@ -1,21 +1,7 @@
-var activeModelPath = getActiveModelPath(dialog);
-var coreModelField = dialog.find("[name='./modelPath']");
+var automaticRadio =
 
-console.log("SELECTION MODE:", this.value);
-console.log("ACTIVE MODEL PATH:", activeModelPath);
-console.log("CORE MODEL BEFORE:", coreModelField.val());
+            dialog.find("coral-radio[name='./selectionMode'][value='automatic']")[0];
 
-if (activeModelPath && coreModelField.length) {
-    coreModelField.val(activeModelPath);
-}
+        if (automaticRadio) {
 
-console.log("CORE MODEL AFTER:", coreModelField.val());
-
-
-$(document).on(
-    "change",
-    "coral-radio[name='./selectionMode']",
-    function () {
-        updateFields($(this).closest("coral-dialog"));
-    }
-);
+            automaticRadio.checked = true;
