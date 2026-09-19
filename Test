@@ -1,7 +1,75 @@
-var automaticRadio =
+var registry = $(window).adaptTo("foundation-registry");
 
-            dialog.find("coral-radio[name='./selectionMode'][value='automatic']")[0];
+// Existing Curated List validation - KEEP THIS
+registry.register("foundation.validation.validator", {
+    selector: "foundation-autocomplete[name='./curatedListPath']",
 
-        if (automaticRadio) {
+    validate: function (el) {
+        var path = el.value;
 
-            automaticRadio.checked = true;
+        if (!path) {
+            return;
+        }
+
+        var valid = false;
+
+        $.ajax({
+            url: path + "/jcr:content/data.json",
+            type: "GET",
+            dataType: "json",
+            async: false,
+
+            success: function (data) {
+                valid = !!(data && data["cq:model"]);
+            },
+
+            error: function () {
+                valid = false;
+            }
+        });
+
+        if (!valid) {
+            return "Please select a valid Content Fragment.";
+        }
+    }
+});
+
+
+// ADD THIS - Manual CF model validation
+registry.register("foundation.validation.validator", {
+    selector: "foundation-autocomplete[name='./manualFragmentPaths']",
+
+    validate: function (el) {
+        var path = el.value;
+        var modelPath = $("[name='./modelPath']").val();
+
+        // No model selected -> don't validate model
+        if (!modelPath || !path) {
+            return;
+        }
+
+        var valid = false;
+
+        $.ajax({
+            url: path + "/jcr:content/data.json",
+            type: "GET",
+            dataType: "json",
+            async: false,
+
+            success: function (data) {
+                valid = data &&
+                    data["cq:model"] === modelPath;
+            },
+
+            error: function () {
+                valid = false;
+            }
+        });
+
+        if (!valid) {
+            return "Selected Content Fragment does not belong to the selected Model.";
+        }
+    }
+});
+
+})(Granite.$, document);
