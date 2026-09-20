@@ -1,41 +1,29 @@
-var registry = $(window).adaptTo("foundation-registry");
+function isMatchingModel(path, modelPath) {
+    var valid = false;
 
-// Existing Curated List validation - KEEP THIS
-registry.register("foundation.validation.validator", {
-    selector: "foundation-autocomplete[name='./curatedListPath']",
-
-    validate: function (el) {
-        var path = el.value;
-
-        if (!path) {
-            return;
-        }
-
-        var valid = false;
-
-        $.ajax({
-            url: path + "/jcr:content/data.json",
-            type: "GET",
-            dataType: "json",
-            async: false,
-
-            success: function (data) {
-                valid = !!(data && data["cq:model"]);
-            },
-
-            error: function () {
-                valid = false;
-            }
-        });
-
-        if (!valid) {
-            return "Please select a valid Content Fragment.";
-        }
+    if (!path || !modelPath) {
+        return true;
     }
-});
 
+    $.ajax({
+        url: path + "/jcr:content/data.json",
+        type: "GET",
+        dataType: "json",
+        async: false,
 
-// ADD THIS - Manual CF model validation
+        success: function (data) {
+            valid = data &&
+                data["cq:model"] === modelPath;
+        },
+
+        error: function () {
+            valid = false;
+        }
+    });
+
+    return valid;
+}
+
 registry.register("foundation.validation.validator", {
     selector: "foundation-autocomplete[name='./manualFragmentPaths']",
 
@@ -43,13 +31,32 @@ registry.register("foundation.validation.validator", {
         var path = el.value;
         var modelPath = $("[name='./modelPath']").val();
 
-        // No model selected -> don't validate model
         if (!modelPath || !path) {
             return;
         }
 
-        var valid = false;
+        if (!isMatchingModel(path, modelPath)) {
+            return "Selected Content Fragment does not belong to the selected Model.";
+        }
+    }
+});
 
+
+registry.register("foundation.validation.validator", {
+    selector: "foundation-autocomplete[name='./curatedListPath']",
+
+    validate: function (el) {
+        var path = el.value;
+        var modelPath = $("[name='./modelPath']").val();
+
+        if (!path) {
+            return;
+        }
+
+        var validContentFragment = false;
+        var referencedFragments = [];
+
+        // Read Curated List CF
         $.ajax({
             url: path + "/jcr:content/data.json",
             type: "GET",
@@ -57,19 +64,45 @@ registry.register("foundation.validation.validator", {
             async: false,
 
             success: function (data) {
-                valid = data &&
-                    data["cq:model"] === modelPath;
+                validContentFragment =
+                    !!(data && data["cq:model"]);
             },
 
             error: function () {
-                valid = false;
+                validContentFragment = false;
             }
         });
 
-        if (!valid) {
-            return "Selected Content Fragment does not belong to the selected Model.";
+        if (!validContentFragment) {
+            return "Please select a valid Content Fragment.";
+        }
+
+        // No model selected -> no model validation
+        if (!modelPath) {
+            return;
+        }
+
+        // Get referenced CFs from master variation
+        $.ajax({
+            url: path + "/jcr:content/data/master.json",
+            type: "GET",
+            dataType: "json",
+            async: false,
+
+            success: function (data) {
+                referencedFragments =
+                    data["selectedContentFragments"] || [];
+            }
+        });
+
+        for (var i = 0; i < referencedFragments.length; i++) {
+
+            if (!isMatchingModel(
+                    referencedFragments[i],
+                    modelPath)) {
+
+                return "Curated List contains a Content Fragment that does not belong to the selected Model.";
+            }
         }
     }
 });
-
-})(Granite.$, document);
