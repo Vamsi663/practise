@@ -1,108 +1,14 @@
-function isMatchingModel(path, modelPath) {
-    var valid = false;
-
-    if (!path || !modelPath) {
-        return true;
-    }
-
-    $.ajax({
-        url: path + "/jcr:content/data.json",
-        type: "GET",
-        dataType: "json",
-        async: false,
-
-        success: function (data) {
-            valid = data &&
-                data["cq:model"] === modelPath;
-        },
-
-        error: function () {
-            valid = false;
+&.cmp-extended-cf-list-single-asterisk {
+    .cmp-contentfragment__element-value {
+        p {
+            &::before {
+                content: "\002A";
+                color: var(--Button-Color-Background---Primary-Default);
+                display: inline-block;
+                font-size: 0.8em;
+                margin-right: 4px;
+                vertical-align: super;
+            }
         }
-    });
-
-    return valid;
+    }
 }
-
-registry.register("foundation.validation.validator", {
-    selector: "foundation-autocomplete[name='./manualFragmentPaths']",
-
-    validate: function (el) {
-        var path = el.value;
-        var modelPath = $("[name='./modelPath']").val();
-
-        if (!modelPath || !path) {
-            return;
-        }
-
-        if (!isMatchingModel(path, modelPath)) {
-            return "Selected Content Fragment does not belong to the selected Model.";
-        }
-    }
-});
-
-
-registry.register("foundation.validation.validator", {
-    selector: "foundation-autocomplete[name='./curatedListPath']",
-
-    validate: function (el) {
-        var path = el.value;
-        var modelPath = $("[name='./modelPath']").val();
-
-        if (!path) {
-            return;
-        }
-
-        var validContentFragment = false;
-        var referencedFragments = [];
-
-        // Read Curated List CF
-        $.ajax({
-            url: path + "/jcr:content/data.json",
-            type: "GET",
-            dataType: "json",
-            async: false,
-
-            success: function (data) {
-                validContentFragment =
-                    !!(data && data["cq:model"]);
-            },
-
-            error: function () {
-                validContentFragment = false;
-            }
-        });
-
-        if (!validContentFragment) {
-            return "Please select a valid Content Fragment.";
-        }
-
-        // No model selected -> no model validation
-        if (!modelPath) {
-            return;
-        }
-
-        // Get referenced CFs from master variation
-        $.ajax({
-            url: path + "/jcr:content/data/master.json",
-            type: "GET",
-            dataType: "json",
-            async: false,
-
-            success: function (data) {
-                referencedFragments =
-                    data["selectedContentFragments"] || [];
-            }
-        });
-
-        for (var i = 0; i < referencedFragments.length; i++) {
-
-            if (!isMatchingModel(
-                    referencedFragments[i],
-                    modelPath)) {
-
-                return "Curated List contains a Content Fragment that does not belong to the selected Model.";
-            }
-        }
-    }
-});
