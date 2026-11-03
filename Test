@@ -1,6 +1,7 @@
-&.cmp-extended-cf-list-single-asterisk {
+&.cmp-extended-cf-list-single-asterisk,
+&.cmp-extended-cf-list-multi-asterisk {
+
     .cmp-contentfragment__element-value p::before {
-        content: "\002A";
         margin-right: 0;
         vertical-align: baseline;
         font-size: 1em;
@@ -9,13 +10,14 @@
     }
 }
 
+&.cmp-extended-cf-list-single-asterisk {
+    .cmp-contentfragment__element-value p::before {
+        content: "\002A";
+    }
+}
+
 &.cmp-extended-cf-list-multi-asterisk {
     .cmp-contentfragment__element-value p::before {
         content: attr(data-asterisks);
-        margin-right: 0;
-        vertical-align: baseline;
-        font-size: 1em;
-        font-weight: bold;
-        color: inherit;
     }
 }
