@@ -1,14 +1,38 @@
-&.cmp-extended-cf-list-single-asterisk {
+&.cmp-extended-cf-list-alphabets {
+
+    .cmp-contentfragmentlist {
+        counter-reset: alphabet-counter;
+    }
+
+    .cmp-contentfragment {
+        counter-increment: alphabet-counter;
+    }
+
     .cmp-contentfragment__element-value {
-        p {
-            &::before {
-                content: "\002A";
-                color: var(--Button-Color-Background---Primary-Default);
-                display: inline-block;
-                font-size: 0.8em;
-                margin-right: 4px;
-                vertical-align: super;
-            }
+        p::before {
+            content: counter(alphabet-counter, lower-alpha) ". ";
+            color: var(--Button-Color-Background---Primary-Default);
+            margin-right: 4px;
         }
     }
 }
+&.cmp-extended-cf-list-dagger {
+    .cmp-contentfragment__element-value {
+        p::before {
+            content: "\2020";
+            margin-right: 4px;
+            vertical-align: super;
+        }
+    }
+}
+
+&.cmp-extended-cf-list-double-dagger {
+    .cmp-contentfragment__element-value {
+        p::before {
+            content: "\2021";
+            margin-right: 4px;
+            vertical-align: super;
+        }
+    }
+}
+
