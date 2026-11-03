@@ -1,44 +1,21 @@
-(function () {
-    "use strict";
-
-    function updateAsterisks() {
-        document.querySelectorAll(
-            ".cmp-extended-cf-list-multi-asterisk"
-        ).forEach(function (component) {
-
-            const fragments = component.querySelectorAll(
-                ".cmp-contentfragment"
-            );
-
-            fragments.forEach(function (fragment, index) {
-                const paragraph = fragment.querySelector(
-                    ".cmp-contentfragment__element-value p"
-                );
-
-                if (paragraph) {
-                    paragraph.setAttribute(
-                        "data-asterisks",
-                        "*".repeat(index + 1)
-                    );
-                }
-            });
-        });
+&.cmp-extended-cf-list-single-asterisk {
+    .cmp-contentfragment__element-value p::before {
+        content: "\002A";
+        margin-right: 0;
+        vertical-align: baseline;
+        font-size: 1em;
+        font-weight: bold;
+        color: inherit;
     }
-
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", updateAsterisks);
-    } else {
-        updateAsterisks();
-    }
-})();
-
+}
 
 &.cmp-extended-cf-list-multi-asterisk {
     .cmp-contentfragment__element-value p::before {
         content: attr(data-asterisks);
-        color: var(--Button-Color-Background---Primary-Default);
-        font-size: 0.8em;
-        vertical-align: super;
-        margin-right: 4px;
+        margin-right: 0;
+        vertical-align: baseline;
+        font-size: 1em;
+        font-weight: bold;
+        color: inherit;
     }
 }
