@@ -1,38 +1,32 @@
-&.cmp-extended-cf-list-alphabets {
+document.querySelectorAll(
+    ".cmp-extended-cf-list-multi-asterisk"
+).forEach(function (component) {
 
-    .cmp-contentfragmentlist {
-        counter-reset: alphabet-counter;
-    }
+    var fragments = component.querySelectorAll(
+        ".cmp-contentfragment"
+    );
 
-    .cmp-contentfragment {
-        counter-increment: alphabet-counter;
-    }
+    fragments.forEach(function (fragment, index) {
 
-    .cmp-contentfragment__element-value {
-        p::before {
-            content: counter(alphabet-counter, lower-alpha) ". ";
-            color: var(--Button-Color-Background---Primary-Default);
-            margin-right: 4px;
+        var paragraph = fragment.querySelector(
+            ".cmp-contentfragment__element-value p"
+        );
+
+        if (paragraph) {
+            paragraph.setAttribute(
+                "data-asterisks",
+                "*".repeat(index + 1)
+            );
         }
+    });
+});
+
+&.cmp-extended-cf-list-multi-asterisk {
+    .cmp-contentfragment__element-value p::before {
+        content: attr(data-asterisks);
+        margin-right: 4px;
+        vertical-align: super;
+        font-size: 0.8em;
+        color: var(--Button-Color-Background---Primary-Default);
     }
 }
-&.cmp-extended-cf-list-dagger {
-    .cmp-contentfragment__element-value {
-        p::before {
-            content: "\2020";
-            margin-right: 4px;
-            vertical-align: super;
-        }
-    }
-}
-
-&.cmp-extended-cf-list-double-dagger {
-    .cmp-contentfragment__element-value {
-        p::before {
-            content: "\2021";
-            margin-right: 4px;
-            vertical-align: super;
-        }
-    }
-}
-
