@@ -1,28 +1,24 @@
-function initializeAsterisks() {
-    updateAsterisks();
-
-    const observer = new MutationObserver(function (mutations) {
-        const shouldUpdate = mutations.some(function (mutation) {
-            return mutation.type === "childList" ||
-                (mutation.type === "attributes" &&
-                    mutation.attributeName === "class");
-        });
-
-        if (shouldUpdate) {
-            updateAsterisks();
-        }
-    });
-
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ["class"]
-    });
+&.cmp-extended-cf-list-single-asterisk,
+&.cmp-extended-cf-list-multi-asterisk {
+    @include first-element-indicator {
+        font-weight: bold;
+        font-size: 1em;
+        color: inherit;
+        margin-right: 0;
+        vertical-align: baseline;
+    }
 }
 
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initializeAsterisks);
-} else {
-    initializeAsterisks();
+&.cmp-extended-cf-list-single-asterisk {
+    .cmp-contentfragment__element:first-child
+    .cmp-contentfragment__element-value::before {
+        content: "\002A";
+    }
+}
+
+&.cmp-extended-cf-list-multi-asterisk {
+    .cmp-contentfragment__element:first-child
+    .cmp-contentfragment__element-value::before {
+        content: attr(data-asterisks);
+    }
 }
